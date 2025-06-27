@@ -54,7 +54,7 @@ loadEnvFile(envPath);
 // Define validation schema
 const envSchema = z.object({
   // Required variables
-  NEXTAUTH_URL: z.string().url('Must be a valid URL'),
+  NEXTAUTH_URL: z.string().url('Must be a valid URL').optional(),
   NEXTAUTH_SECRET: z.string().min(32, 'Must be at least 32 characters'),
   POSTGRES_URL: z.string().min(1, 'Database URL is required'),
   POSTGRES_URL_NON_POOLING: z.string().min(1, 'Non-pooling database URL is required'),

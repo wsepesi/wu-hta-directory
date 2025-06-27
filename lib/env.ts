@@ -8,7 +8,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
   
   // NextAuth Configuration
-  NEXTAUTH_URL: z.string().url(),
+  NEXTAUTH_URL: z.string().url().optional(),
   NEXTAUTH_SECRET: z.string().min(32, 'NEXTAUTH_SECRET must be at least 32 characters'),
   
   // Database Configuration
