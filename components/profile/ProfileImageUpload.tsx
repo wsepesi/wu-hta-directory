@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { showToast } from "@/components/ui/Toast";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 
 interface ProfileImageUploadProps {
@@ -20,6 +21,7 @@ export default function ProfileImageUpload({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState(currentImageUrl || "");
+  const [imageLoading, setImageLoading] = useState(false);
 
   const validateImageUrl = (url: string): boolean => {
     try {
@@ -77,14 +79,11 @@ export default function ProfileImageUpload({
 
       if (response.status === 501) {
         // Schema update needed
-        showToast(
-          "Profile image feature is not yet available. Database schema update required.",
-          "info"
-        );
+        showToast("info", "Profile image feature is not yet available. Database schema update required.");
       } else if (!response.ok) {
         setError(data.error || "Failed to update profile image");
       } else {
-        showToast("Profile image updated successfully!", "success");
+        showToast("success", "Profile image updated successfully!");
         onImageUpdate?.(imageUrl);
       }
     } catch (error) {
@@ -101,33 +100,45 @@ export default function ProfileImageUpload({
       
       {/* Image Preview */}
       <div className="flex items-center space-x-6">
-        <div className="flex-shrink-0">
-          {previewUrl ? (
-            <img
+        <div className="flex-shrink-0 relative">
+          {imageLoading && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Skeleton variant="circular" width={96} height={96} />
+            </div>
+          )}
+          {previewUrl && !imageLoading ? (
+            <Image
               src={previewUrl}
               alt="Profile"
+              width={96}
+              height={96}
               className="h-24 w-24 rounded-full object-cover border-2 border-gray-200"
+              onLoadStart={() => setImageLoading(true)}
+              onLoadingComplete={() => setImageLoading(false)}
               onError={() => {
+                setImageLoading(false);
                 setPreviewUrl("");
                 setError("Failed to load image preview");
               }}
             />
           ) : (
-            <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
-              <svg
-                className="h-12 w-12 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
-            </div>
+            !imageLoading && (
+              <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
+                <svg
+                  className="h-12 w-12 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </div>
+            )
           )}
         </div>
         
@@ -164,9 +175,6 @@ export default function ProfileImageUpload({
               disabled={isLoading}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? (
-                <LoadingSpinner size="sm" className="mr-2" />
-              ) : null}
               {isLoading ? "Updating..." : "Update Image"}
             </button>
           </form>
@@ -176,7 +184,7 @@ export default function ProfileImageUpload({
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-800">
           <strong>Note:</strong> Profile image functionality is currently limited. 
-          In a future update, you'll be able to upload images directly from your device.
+          In a future update, you&apos;ll be able to upload images directly from your device.
         </p>
       </div>
     </div>

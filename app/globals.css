@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
   --color-charcoal: #2C2C2C;
   --color-white: #FFFFFF;
+  /* Font variable will be injected by Next.js */
+  --font-serif: var(--font-crimson-text, Georgia, 'Times New Roman', Times, serif);
 }
 
 @theme inline {
@@ -16,12 +16,6 @@
   --color-foreground: var(--foreground);
   --color-charcoal: #2C2C2C;
   --color-white: #FFFFFF;
-  
-  /* Custom Fonts */
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-script: 'Dancing Script', cursive;
-  --font-serif: 'Crimson Text', serif;
   
   /* Custom Spacing */
   --spacing-18: 4.5rem;
@@ -38,10 +32,10 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-serif);
 }
 
-/* Skeleton loader animations */
+/* Skeleton loader animations - subtle and clean */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -55,18 +49,18 @@ body {
   background: linear-gradient(
     90deg,
     rgba(229, 231, 235, 0) 0%,
-    rgba(229, 231, 235, 0.5) 50%,
+    rgba(229, 231, 235, 0.3) 50%,
     rgba(229, 231, 235, 0) 100%
   );
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 2s infinite;
 }
 
-/* Smooth animations */
+/* Smooth animations - subtle and clean */
 @keyframes animate-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -75,7 +69,7 @@ body {
 }
 
 .animate-in {
-  animation: animate-in 0.2s ease-out;
+  animation: animate-in 0.3s ease-out;
 }
 
 /* Focus visible styles for accessibility */
@@ -107,4 +101,265 @@ html {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Clean transition utilities */
+.transition-base {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+.transition-fast {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.transition-slow {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* Serif font utilities */
+.font-serif {
+  font-family: var(--font-serif), Georgia, 'Times New Roman', Times, serif;
+}
+
+.font-serif-light {
+  font-family: var(--font-serif), Georgia, 'Times New Roman', Times, serif;
+  font-weight: 300;
+}
+
+.font-serif-normal {
+  font-family: var(--font-serif), Georgia, 'Times New Roman', Times, serif;
+  font-weight: 400;
+}
+
+.font-serif-medium {
+  font-family: var(--font-serif), Georgia, 'Times New Roman', Times, serif;
+  font-weight: 500;
+}
+
+.font-serif-semibold {
+  font-family: var(--font-serif), Georgia, 'Times New Roman', Times, serif;
+  font-weight: 600;
+}
+
+.font-serif-bold {
+  font-family: var(--font-serif), Georgia, 'Times New Roman', Times, serif;
+  font-weight: 700;
+}
+
+/* Clean hover states */
+.hover-lift {
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.hover-opacity {
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-opacity:hover {
+  opacity: 0.8;
+}
+
+/* Text color utilities for charcoal */
+.text-charcoal {
+  color: var(--color-charcoal);
+}
+
+.bg-charcoal {
+  background-color: var(--color-charcoal);
+}
+
+.border-charcoal {
+  border-color: var(--color-charcoal);
+}
+
+/* Clean button base styles */
+.btn-clean {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-clean:focus-visible {
+  outline: 2px solid var(--color-charcoal);
+  outline-offset: 2px;
+}
+
+/* Remove complex shadows and gradients from existing styles */
+.no-shadow {
+  box-shadow: none !important;
+}
+
+.no-gradient {
+  background-image: none !important;
+}
+
+/* Progressive Enhancement Support - Removed as it causes hydration issues */
+/* Use the ProgressiveEnhancement component instead for client-side enhancement */
+
+/* Form validation states for progressive enhancement */
+.field-invalid {
+  border-color: #dc2626;
+}
+
+.field-valid {
+  border-color: #16a34a;
+}
+
+/* Enhanced focus states for forms */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--color-charcoal);
+  outline-offset: 2px;
+}
+
+/* Loading states for forms */
+.form-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.form-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  margin-top: -10px;
+  border: 2px solid var(--color-charcoal);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* View Transitions API Support */
+@supports (view-transition-name: root) {
+  /* Enable view transitions for the entire page */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.3s;
+  }
+
+  /* Page transitions */
+  ::view-transition-old(root) {
+    animation: fade-out 0.3s ease-out;
+  }
+
+  ::view-transition-new(root) {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  /* Navigation specific transitions */
+  .navigation-transitioning {
+    view-transition-name: navigation;
+  }
+
+  ::view-transition-old(navigation) {
+    animation: slide-out-left 0.3s ease-out;
+  }
+
+  ::view-transition-new(navigation) {
+    animation: slide-in-right 0.3s ease-out;
+  }
+
+  /* Image transitions */
+  img {
+    view-transition-name: image;
+  }
+
+  ::view-transition-old(image),
+  ::view-transition-new(image) {
+    animation: crossfade 0.4s ease-in-out;
+  }
+}
+
+/* View transition animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-left {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes crossfade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Navigation progress bar */
+.navigation-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-charcoal);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.3s ease-out;
+  z-index: 9999;
+}
+
+.navigation-progress.active {
+  transform: scaleX(var(--progress, 0));
 }

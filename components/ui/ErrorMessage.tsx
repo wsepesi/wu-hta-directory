@@ -2,20 +2,22 @@ import { ReactNode } from 'react';
 import { clsx } from 'clsx';
 
 interface ErrorMessageProps {
-  children: ReactNode;
+  children?: ReactNode;
+  message?: string;
   className?: string;
   variant?: 'error' | 'warning' | 'info';
 }
 
 export function ErrorMessage({ 
   children, 
+  message,
   className,
   variant = 'error' 
 }: ErrorMessageProps) {
   const variantStyles = {
-    error: 'bg-red-50 border-red-200 text-red-800',
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-    info: 'bg-blue-50 border-blue-200 text-blue-800'
+    error: 'bg-white border-red-600 text-red-600',
+    warning: 'bg-white border-yellow-600 text-yellow-600',
+    info: 'bg-white border-charcoal text-charcoal'
   };
 
   const iconPaths = {
@@ -27,7 +29,7 @@ export function ErrorMessage({
   return (
     <div
       className={clsx(
-        'rounded-lg border p-4 flex items-start gap-3',
+        'border p-4 flex items-start gap-3',
         variantStyles[variant],
         className
       )}
@@ -47,8 +49,8 @@ export function ErrorMessage({
           d={iconPaths[variant]}
         />
       </svg>
-      <div className="flex-1 text-sm font-medium">
-        {children}
+      <div className="flex-1 text-sm font-serif">
+        {message || children}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import LoginForm from "@/components/auth/LoginForm";
+import { ProgressiveLoginForm } from "@/components/auth/ProgressiveLoginForm";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { Typography } from "@/components/ui/Typography";
@@ -23,7 +23,7 @@ export default function LoginPage() {
         </div>
         
         <Card>
-          <LoginForm />
+          <ProgressiveLoginForm />
         </Card>
 
         <div className="text-center">

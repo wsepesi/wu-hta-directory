@@ -114,7 +114,6 @@ If you didn't expect this invitation, you can safely ignore this email.
  */
 export function getTargetedInvitationEmailTemplate(data: TargetedInvitationTemplateData): EmailTemplate {
   const greeting = data.recipientName ? `Hi ${data.recipientName},` : 'Hi there,';
-  const professorInfo = data.professorName ? ` with Professor ${data.professorName}` : '';
   
   const html = `
     <!DOCTYPE html>
@@ -135,12 +134,12 @@ export function getTargetedInvitationEmailTemplate(data: TargetedInvitationTempl
     <body>
       <div class="container">
         <div class="header">
-          <h1>TA Opportunity: ${data.courseNumber}</h1>
+          <h1>Claim Your Head TA Profile for ${data.courseNumber}</h1>
         </div>
         
         <p>${greeting}</p>
         
-        <p><strong>${data.inviterName}</strong> is looking for a teaching assistant and thought you might be interested!</p>
+        <p><strong>${data.inviterName}</strong> has recorded you as the Head TA for this course. Claim your profile to manage your information!</p>
         
         <div class="course-info">
           <h3>Course Details:</h3>
@@ -156,7 +155,7 @@ export function getTargetedInvitationEmailTemplate(data: TargetedInvitationTempl
         </div>
         ` : ''}
         
-        <p>If you're interested, please join the WU Head TAs platform to learn more and express your interest.</p>
+        <p>Claim your profile on the WU Head TAs platform to update your information and control your privacy settings.</p>
         
         <a href="${data.invitationUrl}" class="button">Join WU Head TAs</a>
         
@@ -165,7 +164,7 @@ export function getTargetedInvitationEmailTemplate(data: TargetedInvitationTempl
         <p>This invitation will expire in ${data.expirationDays} days.</p>
         
         <div class="footer">
-          <p>If you're not interested or didn't expect this invitation, you can safely ignore this email.</p>
+          <p>If you believe this record is incorrect or you don't wish to claim this profile, you can safely ignore this email.</p>
         </div>
       </div>
     </body>
@@ -173,24 +172,24 @@ export function getTargetedInvitationEmailTemplate(data: TargetedInvitationTempl
   `;
   
   const text = `
-TA Opportunity: ${data.courseNumber}
+Claim Your Head TA Profile for ${data.courseNumber}
 
 ${greeting}
 
-${data.inviterName} is looking for a teaching assistant and thought you might be interested!
+${data.inviterName} has recorded you as the Head TA for this course. Claim your profile to manage your information!
 
 Course Details:
 - Course: ${data.courseNumber} - ${data.courseName}
 - Semester: ${data.semester}
 - Instructor: ${data.professorName || 'TBD'}
 
-${data.message ? `Message from ${data.inviterName}:\n${data.message}\n\n` : ''}If you're interested, please join the WU Head TAs platform to learn more and express your interest.
+${data.message ? `Message from ${data.inviterName}:\n${data.message}\n\n` : ''}Claim your profile on the WU Head TAs platform to update your information and control your privacy settings.
 
 Join here: ${data.invitationUrl}
 
 This invitation will expire in ${data.expirationDays} days.
 
-If you're not interested or didn't expect this invitation, you can safely ignore this email.
+If you believe this record is incorrect or you don't wish to claim this profile, you can safely ignore this email.
   `.trim();
   
   return { html, text };
@@ -341,7 +340,6 @@ Thank you for joining WU Head TAs!
  * Get TA assignment notification template
  */
 export function getTAAssignmentNotificationTemplate(data: TAAssignmentTemplateData): EmailTemplate {
-  const professorInfo = data.professorName ? ` with Professor ${data.professorName}` : '';
   
   const html = `
     <!DOCTYPE html>
@@ -361,27 +359,27 @@ export function getTAAssignmentNotificationTemplate(data: TAAssignmentTemplateDa
     <body>
       <div class="container">
         <div class="header">
-          <h1>You've been assigned as a TA!</h1>
+          <h1>You've been recorded as a Head TA!</h1>
         </div>
         
         <p>Hi ${data.taName},</p>
         
-        <p>Great news! You've been assigned as a teaching assistant for the following course:</p>
+        <p>You've been recorded as the Head TA for the following course. Claim your profile to manage your information:</p>
         
         <div class="assignment-info">
-          <h3>Assignment Details:</h3>
+          <h3>Head TA Record Details:</h3>
           <p><strong>Course:</strong> ${data.courseNumber} - ${data.courseName}</p>
           <p><strong>Semester:</strong> ${data.semester}</p>
           <p><strong>Instructor:</strong> ${data.professorName || 'TBD'}</p>
           <p><strong>Hours per week:</strong> ${data.hoursPerWeek}</p>
         </div>
         
-        <p>Please check your dashboard for more details about your responsibilities and to connect with the course instructor.</p>
+        <p>Please claim your profile to update your information, control privacy settings, and connect with faculty and other TAs.</p>
         
         <a href="${data.dashboardUrl}" class="button">View Assignment</a>
         
         <div class="footer">
-          <p>Congratulations on your new TA assignment!</p>
+          <p>Thank you for your service as a Head TA!</p>
         </div>
       </div>
     </body>
@@ -389,23 +387,122 @@ export function getTAAssignmentNotificationTemplate(data: TAAssignmentTemplateDa
   `;
   
   const text = `
-You've been assigned as a TA!
+You've been recorded as a Head TA!
 
 Hi ${data.taName},
 
-Great news! You've been assigned as a teaching assistant for the following course:
+You've been recorded as the Head TA for the following course. Claim your profile to manage your information:
 
-Assignment Details:
+Head TA Record Details:
 - Course: ${data.courseNumber} - ${data.courseName}
 - Semester: ${data.semester}
 - Instructor: ${data.professorName || 'TBD'}
 - Hours per week: ${data.hoursPerWeek}
 
-Please check your dashboard for more details about your responsibilities and to connect with the course instructor.
+Please claim your profile to update your information, control privacy settings, and connect with faculty and other TAs.
 
 View your assignment: ${data.dashboardUrl}
 
-Congratulations on your new TA assignment!
+Thank you for your service as a Head TA!
+  `.trim();
+  
+  return { html, text };
+}
+
+/**
+ * Get historical Head TA record notification template
+ */
+export function getHistoricalHeadTARecordTemplate(data: {
+  recipientName: string;
+  courseNumber: string;
+  courseName: string;
+  semester: string;
+  professorName: string | null;
+  claimUrl: string;
+}): EmailTemplate {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>You've Been Recorded as a Head TA</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .course-info { background-color: #e9ecef; padding: 15px; border-radius: 4px; margin: 20px 0; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+        .benefits { background-color: #f0f8ff; padding: 15px; border-radius: 4px; margin: 20px 0; }
+        .footer { margin-top: 40px; font-size: 14px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>You've Been Recorded as a Head TA</h1>
+        </div>
+        
+        <p>Hi ${data.recipientName},</p>
+        
+        <p>We're building a comprehensive directory of Head TAs at Washington University, and you've been recorded as having served in this role:</p>
+        
+        <div class="course-info">
+          <h3>Your Head TA Record:</h3>
+          <p><strong>Course:</strong> ${data.courseNumber} - ${data.courseName}</p>
+          <p><strong>Semester:</strong> ${data.semester}</p>
+          <p><strong>Professor:</strong> ${data.professorName || 'Not specified'}</p>
+        </div>
+        
+        <div class="benefits">
+          <h3>By claiming your profile, you can:</h3>
+          <ul>
+            <li>Update your professional information and bio</li>
+            <li>Add other courses you've TA'd</li>
+            <li>Control your privacy settings</li>
+            <li>Connect with current and former Head TAs</li>
+            <li>Be part of the WU CS Head TA community</li>
+          </ul>
+        </div>
+        
+        <p>This is a one-time opportunity to claim and manage your profile in our directory.</p>
+        
+        <a href="${data.claimUrl}" class="button">Claim Your Profile</a>
+        
+        <div class="footer">
+          <p>If you believe this information is incorrect or you prefer not to be listed, you can ignore this email or contact us to have your record removed.</p>
+          <p>Thank you for your service to the WU CS community!</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  const text = `
+You've Been Recorded as a Head TA
+
+Hi ${data.recipientName},
+
+We're building a comprehensive directory of Head TAs at Washington University, and you've been recorded as having served in this role:
+
+Your Head TA Record:
+- Course: ${data.courseNumber} - ${data.courseName}
+- Semester: ${data.semester}
+- Professor: ${data.professorName || 'Not specified'}
+
+By claiming your profile, you can:
+- Update your professional information and bio
+- Add other courses you've TA'd
+- Control your privacy settings
+- Connect with current and former Head TAs
+- Be part of the WU CS Head TA community
+
+This is a one-time opportunity to claim and manage your profile in our directory.
+
+Claim your profile: ${data.claimUrl}
+
+If you believe this information is incorrect or you prefer not to be listed, you can ignore this email or contact us to have your record removed.
+
+Thank you for your service to the WU CS community!
   `.trim();
   
   return { html, text };

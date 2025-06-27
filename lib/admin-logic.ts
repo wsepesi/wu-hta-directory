@@ -1,6 +1,6 @@
 import { db } from './db';
 import { users, courses, professors, courseOfferings, taAssignments, invitations, sessions } from './db/schema';
-import { eq, sql, and, gte, lte, isNotNull } from 'drizzle-orm';
+import { eq, sql, and, gte } from 'drizzle-orm';
 
 interface UserInvitationNode {
   id: string;

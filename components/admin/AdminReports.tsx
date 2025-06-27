@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "../ui/Button";
-import { LoadingSpinner } from "../ui/LoadingSpinner";
 
 interface ReportType {
   id: string;
@@ -85,7 +84,8 @@ export default function AdminReports() {
       document.body.removeChild(a);
     } catch (err) {
       console.error("Error generating report:", err);
-      setError(`Failed to generate report: ${err.message}`);
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
+      setError(`Failed to generate report: ${errorMessage}`);
     } finally {
       setGenerating(null);
     }
@@ -121,7 +121,7 @@ export default function AdminReports() {
               >
                 {generating === report.id ? (
                   <>
-                    <LoadingSpinner size="sm" className="mr-2" />
+                    <span className="inline-block w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Generating...
                   </>
                 ) : (

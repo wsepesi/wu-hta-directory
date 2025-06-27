@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Return invitation details (without sensitive info)
-    const { token: _, ...invitationData } = invitation;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { token: _token, ...invitationData } = invitation;
 
     return NextResponse.json(
       { 

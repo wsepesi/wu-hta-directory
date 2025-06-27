@@ -4,8 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { userRepository } from '@/lib/repositories/users';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import type { ApiResponse, InvitationTree, User } from '@/lib/types';
+import { eq, isNull } from 'drizzle-orm';
+import type { ApiResponse, User } from '@/lib/types';
 
 interface InvitationTreeWithStats {
   user: User;
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       // Find all root users (those who weren't invited by anyone)
       const rootUsers = await db.select()
         .from(users)
-        .where(eq(users.invitedBy, null))
+        .where(isNull(users.invitedBy))
         .orderBy(users.createdAt);
 
       // Build tree for each root user

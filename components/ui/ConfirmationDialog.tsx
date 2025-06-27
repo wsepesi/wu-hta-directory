@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Button } from './Button';
 import { clsx } from 'clsx';
 
 interface ConfirmationDialogProps {
@@ -62,15 +61,15 @@ export function ConfirmationDialog({
   const variantStyles = {
     danger: {
       icon: 'text-red-600',
-      button: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
+      button: 'text-red-600 border border-red-600 hover:opacity-70',
     },
     warning: {
       icon: 'text-yellow-600',
-      button: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500',
+      button: 'text-yellow-600 border border-yellow-600 hover:opacity-70',
     },
     info: {
-      icon: 'text-blue-600',
-      button: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
+      icon: 'text-charcoal',
+      button: 'text-charcoal border border-charcoal hover:opacity-70',
     },
   }[variant];
 
@@ -102,7 +101,7 @@ export function ConfirmationDialog({
       <div className="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
         <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          className="fixed inset-0 bg-charcoal/20 transition-opacity"
           aria-hidden="true"
           onClick={onClose}
         />
@@ -117,43 +116,39 @@ export function ConfirmationDialog({
           ref={dialogRef}
           tabIndex={-1}
           className={clsx(
-            'inline-block transform overflow-hidden rounded-lg bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle',
-            'animate-in fade-in zoom-in-95 duration-200'
+            'inline-block transform overflow-hidden bg-white text-left align-bottom border border-charcoal transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle'
           )}
         >
           <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="sm:flex sm:items-start">
               <div className={clsx(
-                'mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full sm:mx-0 sm:h-10 sm:w-10',
-                variant === 'danger' && 'bg-red-100',
-                variant === 'warning' && 'bg-yellow-100',
-                variant === 'info' && 'bg-blue-100'
+                'mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center sm:mx-0 sm:h-10 sm:w-10'
               )}>
                 <div className={variantStyles.icon} aria-hidden="true">
                   {icon}
                 </div>
               </div>
               <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                <h3 className="text-lg font-medium leading-6 text-gray-900" id="modal-title">
+                <h3 className="text-lg font-serif leading-6 text-charcoal" id="modal-title">
                   {title}
                 </h3>
                 <div className="mt-2">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-charcoal/70 font-serif">
                     {message}
                   </p>
                 </div>
               </div>
             </div>
           </div>
-          <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+          <div className="bg-white border-t border-charcoal/20 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
             <button
               type="button"
               onClick={onConfirm}
               disabled={loading}
               className={clsx(
-                'inline-flex w-full justify-center rounded-md border border-transparent px-4 py-2 text-base font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200',
+                'inline-flex w-full justify-center px-3 py-1.5 text-base font-serif focus:outline-none focus:ring-1 focus:ring-charcoal focus:ring-offset-1 sm:ml-3 sm:w-auto sm:text-sm transition-opacity duration-200',
                 variantStyles.button,
-                loading && 'opacity-50 cursor-not-allowed'
+                loading && 'opacity-40 cursor-not-allowed'
               )}
             >
               {loading ? (
@@ -168,7 +163,7 @@ export function ConfirmationDialog({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-3 inline-flex w-full justify-center border border-charcoal bg-white px-3 py-1.5 text-base font-serif text-charcoal hover:opacity-70 focus:outline-none focus:ring-1 focus:ring-charcoal focus:ring-offset-1 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-opacity duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {cancelText}
             </button>

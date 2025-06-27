@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { SerifHeading, BodyText } from '../ui/Typography';
 import { ErrorMessage } from '../ui/ErrorMessage';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { Skeleton, SkeletonTable } from '../ui/Skeleton';
 import { clsx } from 'clsx';
 
 interface User {
@@ -88,8 +88,30 @@ export function UserManagement({
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <LoadingSpinner size="lg" />
+      <div className="space-y-6">
+        {/* Invite new user skeleton */}
+        <div className="p-6 bg-white border border-charcoal">
+          <Skeleton className="h-7 w-40 mb-4" />
+          <div className="flex gap-3">
+            <Skeleton className="h-10 flex-1" />
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-28" />
+          </div>
+        </div>
+
+        {/* Filters skeleton */}
+        <div className="p-6 bg-white border border-charcoal">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+          </div>
+        </div>
+
+        {/* User table skeleton */}
+        <div className="bg-white border border-charcoal overflow-hidden">
+          <SkeletonTable rows={5} columns={5} />
+        </div>
       </div>
     );
   }

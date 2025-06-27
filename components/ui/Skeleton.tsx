@@ -16,9 +16,9 @@ export function Skeleton({
   animation = 'pulse',
 }: SkeletonProps) {
   const variantStyles = {
-    text: 'rounded',
-    circular: 'rounded-full',
-    rectangular: 'rounded-md',
+    text: '',
+    circular: '',
+    rectangular: '',
   };
 
   const animationStyles = {
@@ -27,7 +27,7 @@ export function Skeleton({
     none: '',
   };
 
-  const baseStyles = 'bg-gray-200';
+  const baseStyles = 'bg-charcoal/10';
 
   // Default heights for text variant
   const defaultHeight = variant === 'text' ? 'h-4' : '';
@@ -50,12 +50,22 @@ export function Skeleton({
 }
 
 // Skeleton components for common UI patterns
-export function SkeletonCard({ className }: { className?: string }) {
+export function SkeletonCard({ 
+  className,
+  children 
+}: { 
+  className?: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className={clsx('p-6 bg-white rounded-lg shadow', className)}>
-      <Skeleton variant="rectangular" height={200} className="mb-4" />
-      <Skeleton variant="text" className="mb-2" />
-      <Skeleton variant="text" width="60%" />
+    <div className={clsx('p-6 bg-white border border-charcoal rounded-lg', className)}>
+      {children || (
+        <>
+          <Skeleton variant="rectangular" height={200} className="mb-4" />
+          <Skeleton variant="text" className="mb-2" />
+          <Skeleton variant="text" width="60%" />
+        </>
+      )}
     </div>
   );
 }
@@ -70,7 +80,7 @@ export function SkeletonList({
   return (
     <div className={clsx('space-y-4', className)}>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="flex items-center space-x-4 p-4 bg-white rounded-lg shadow">
+        <div key={i} className="flex items-center space-x-4 p-4 bg-white border border-charcoal rounded-lg">
           <Skeleton variant="circular" width={48} height={48} />
           <div className="flex-1">
             <Skeleton variant="text" className="mb-2" />
@@ -92,9 +102,9 @@ export function SkeletonTable({
   className?: string 
 }) {
   return (
-    <div className={clsx('bg-white rounded-lg shadow overflow-hidden', className)}>
+    <div className={clsx('bg-white border border-charcoal rounded-lg overflow-hidden', className)}>
       <table className="min-w-full">
-        <thead className="bg-gray-50">
+        <thead className="bg-white border-b border-charcoal">
           <tr>
             {Array.from({ length: columns }).map((_, i) => (
               <th key={i} className="px-6 py-3">
@@ -103,7 +113,7 @@ export function SkeletonTable({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200">
+        <tbody className="divide-y divide-charcoal/20">
           {Array.from({ length: rows }).map((_, rowIndex) => (
             <tr key={rowIndex}>
               {Array.from({ length: columns }).map((_, colIndex) => (

@@ -10,7 +10,7 @@ interface ErrorContext {
   path?: string;
   method?: string;
   statusCode?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 class ErrorLogger {
@@ -60,11 +60,11 @@ class ErrorLogger {
       method?: string;
       url?: string;
       headers?: Record<string, string>;
-      body?: any;
+      body?: unknown;
     },
     response?: {
       statusCode?: number;
-      body?: any;
+      body?: unknown;
     }
   ) {
     const context: ErrorContext = {
@@ -84,7 +84,7 @@ class ErrorLogger {
   /**
    * Log client-side errors
    */
-  logClientError(error: Error | string, componentName?: string, props?: any) {
+  logClientError(error: Error | string, componentName?: string, props?: unknown) {
     const context: ErrorContext = {
       metadata: {
         component: componentName,
@@ -100,7 +100,7 @@ class ErrorLogger {
   /**
    * Send error to external service (Sentry, etc.)
    */
-  private async sendToErrorService(logEntry: any) {
+  private async sendToErrorService(logEntry: Record<string, unknown>) {
     // TODO: Implement integration with error tracking service
     // Example: Sentry.captureException(error, { extra: context });
     
@@ -113,7 +113,7 @@ class ErrorLogger {
   /**
    * Log to server (could be file, database, etc.)
    */
-  private logToServer(logEntry: any) {
+  private logToServer(logEntry: Record<string, unknown>) {
     // In a real app, this might write to a log file or database
     // For now, we'll use console.log which will be captured by server logs
     if (typeof window === 'undefined') {
@@ -125,7 +125,7 @@ class ErrorLogger {
   /**
    * Create a wrapped version of a function that logs errors
    */
-  wrapAsync<T extends (...args: any[]) => Promise<any>>(
+  wrapAsync<T extends (...args: unknown[]) => Promise<unknown>>(
     fn: T,
     context?: Partial<ErrorContext>
   ): T {
@@ -142,9 +142,10 @@ class ErrorLogger {
   /**
    * Create a wrapped version of an API route handler
    */
-  wrapApiHandler<T extends (...args: any[]) => Promise<any>>(
+  wrapApiHandler<T extends (...args: unknown[]) => Promise<unknown>>(
     handler: T,
-    routeName: string
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _routeName: string
   ): T {
     return (async (...args: Parameters<T>) => {
       const [request] = args;
@@ -154,8 +155,8 @@ class ErrorLogger {
         this.logApiError(
           error as Error,
           {
-            method: request?.method,
-            url: request?.url,
+            method: (request as Record<string, unknown>)?.method as string,
+            url: (request as Record<string, unknown>)?.url as string,
           },
           {
             statusCode: 500,

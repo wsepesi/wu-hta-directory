@@ -31,14 +31,14 @@ INSERT INTO professors (id, first_name, last_name, email) VALUES
 ('650e8400-e29b-41d4-a716-446655440005', 'David', 'Martinez', 'david.martinez@university.edu');
 
 -- Insert sample courses
-INSERT INTO courses (id, course_number, course_name, offering_pattern) VALUES
-('750e8400-e29b-41d4-a716-446655440001', 'CS 15', 'Data Structures', 'both'),
-('750e8400-e29b-41d4-a716-446655440002', 'CS 40', 'Machine Structure and Assembly Language', 'both'),
-('750e8400-e29b-41d4-a716-446655440003', 'CS 170', 'Computation Theory', 'fall_only'),
-('750e8400-e29b-41d4-a716-446655440004', 'CS 135', 'Introduction to Machine Learning', 'spring_only'),
-('750e8400-e29b-41d4-a716-446655440005', 'MATH 70', 'Linear Algebra', 'both'),
-('750e8400-e29b-41d4-a716-446655440006', 'ECON 11', 'Intermediate Microeconomics', 'both'),
-('750e8400-e29b-41d4-a716-446655440007', 'PSY 1', 'Introduction to Psychology', 'both');
+INSERT INTO courses (id, course_number, course_name) VALUES
+('750e8400-e29b-41d4-a716-446655440001', 'CS 15', 'Data Structures'),
+('750e8400-e29b-41d4-a716-446655440002', 'CS 40', 'Machine Structure and Assembly Language'),
+('750e8400-e29b-41d4-a716-446655440003', 'CS 170', 'Computation Theory'),
+('750e8400-e29b-41d4-a716-446655440004', 'CS 135', 'Introduction to Machine Learning'),
+('750e8400-e29b-41d4-a716-446655440005', 'MATH 70', 'Linear Algebra'),
+('750e8400-e29b-41d4-a716-446655440006', 'ECON 11', 'Intermediate Microeconomics'),
+('750e8400-e29b-41d4-a716-446655440007', 'PSY 1', 'Introduction to Psychology');
 
 -- Insert sample course offerings
 INSERT INTO course_offerings (id, course_id, professor_id, semester, year, season) VALUES

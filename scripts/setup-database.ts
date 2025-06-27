@@ -1,10 +1,13 @@
 #!/usr/bin/env node
-import { sql } from '@vercel/postgres';
+import { createClient } from '@vercel/postgres';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
 import * as schema from '../lib/db/schema';
 import fs from 'fs/promises';
 import path from 'path';
 import { env } from '../lib/env';
+
+// Create pooled client
+const client = createClient();
 
 // ANSI color codes
 const colors = {
@@ -22,7 +25,7 @@ function log(message: string, color: keyof typeof colors = 'reset') {
 async function runMigration(migrationPath: string) {
   try {
     const migrationSQL = await fs.readFile(migrationPath, 'utf-8');
-    await sql.query(migrationSQL);
+    await client.query(migrationSQL);
     log(`✓ Applied migration: ${path.basename(migrationPath)}`, 'green');
   } catch (error) {
     log(`✗ Failed to apply migration: ${path.basename(migrationPath)}`, 'red');
@@ -36,7 +39,7 @@ async function setupDatabase() {
   try {
     // Check database connection
     log('Checking database connection...', 'yellow');
-    const result = await sql`SELECT version()`;
+    const result = await client.sql`SELECT version()`;
     log(`✓ Connected to database: ${result.rows[0].version}`, 'green');
     
     // Run migrations
@@ -66,7 +69,7 @@ async function setupDatabase() {
     
     // Verify tables exist
     log('\nVerifying database schema...', 'yellow');
-    const tables = await sql`
+    const tables = await client.sql`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public' 

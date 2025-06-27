@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { SearchWithHighlight } from "../search/SearchWithHighlight";
+import { ProgressiveGlobalSearch } from "../search/ProgressiveGlobalSearch";
+import { ProgressiveLink } from "../navigation/ProgressiveLink";
+import { clsx } from "clsx";
 
 export function NavigationWithSearch() {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const handleSignOut = async () => {
@@ -16,11 +16,11 @@ export function NavigationWithSearch() {
   };
 
   const navItems = [
-    { href: "/directory", label: "Directory", public: true },
-    { href: "/courses", label: "Courses", public: false },
-    { href: "/semesters", label: "Semesters", public: false },
-    { href: "/people", label: "People", public: false },
-    { href: "/professors", label: "Professors", public: false },
+    { href: "/directory", label: "Directory" },
+    { href: "/courses", label: "Courses" },
+    { href: "/semesters", label: "Semesters" },
+    { href: "/people", label: "People" },
+    { href: "/professors", label: "Professors" },
   ];
 
   const adminItems = [
@@ -32,50 +32,45 @@ export function NavigationWithSearch() {
   const isAdmin = session?.user?.role === "admin";
   const isAuthenticated = status === "authenticated";
 
-  const visibleItems = navItems.filter(item => {
-    if (item.public) return true;
-    return isAuthenticated;
-  });
-
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+    <nav className="bg-white">
+      <div className="max-w-4xl mx-auto px-8 py-6">
+        <div className="flex justify-between items-center">
           {/* Logo and primary nav */}
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <Link href="/" className="text-xl font-bold text-gray-900">
-                WU Head TAs
-              </Link>
+              <ProgressiveLink href="/" className="font-serif text-xl text-charcoal hover:opacity-70 transition-opacity duration-200">
+                <em>WU Head TAs</em>
+              </ProgressiveLink>
             </div>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {visibleItems.map((item) => (
-                <Link
+            <div className="hidden sm:ml-12 sm:flex sm:space-x-12">
+              {navItems.map((item) => (
+                <ProgressiveLink
                   key={item.href}
                   href={item.href}
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900 hover:border-gray-300"
+                  className="font-serif text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200"
                 >
                   {item.label}
-                </Link>
+                </ProgressiveLink>
               ))}
               {isAdmin && (
                 <div className="relative group">
-                  <button className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900">
+                  <button className="font-serif text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200">
                     Admin
                     <svg className="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                   </button>
-                  <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                  <div className="absolute left-0 mt-2 w-48 bg-white border border-charcoal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                     <div className="py-1">
                       {adminItems.map((item) => (
-                        <Link
+                        <ProgressiveLink
                           key={item.href}
                           href={item.href}
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          className="block px-4 py-2 font-serif text-sm text-charcoal hover:opacity-70 transition-opacity duration-200"
                         >
                           {item.label}
-                        </Link>
+                        </ProgressiveLink>
                       ))}
                     </div>
                   </div>
@@ -94,33 +89,33 @@ export function NavigationWithSearch() {
 
             {isAuthenticated ? (
               <div className="flex items-center space-x-3">
-                <Link
+                <ProgressiveLink
                   href="/profile"
-                  className="text-sm text-gray-500 hover:text-gray-900"
+                  className="font-serif text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200"
                 >
                   {session.user.firstName} {session.user.lastName}
-                </Link>
+                </ProgressiveLink>
                 <button
                   onClick={handleSignOut}
-                  className="text-sm text-gray-500 hover:text-gray-900"
+                  className="font-serif text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200"
                 >
                   Sign Out
                 </button>
               </div>
             ) : (
               <div className="flex items-center space-x-3">
-                <Link
-                  href="/auth/login"
-                  className="text-sm text-gray-500 hover:text-gray-900"
+                <ProgressiveLink
+                  href="/auth/signin"
+                  className="font-serif text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200"
                 >
                   Sign In
-                </Link>
-                <Link
+                </ProgressiveLink>
+                <ProgressiveLink
                   href="/auth/register"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                  className="font-serif text-sm uppercase tracking-wider text-charcoal border border-charcoal px-4 py-2 hover:opacity-70 transition-opacity duration-200"
                 >
                   Sign Up
-                </Link>
+                </ProgressiveLink>
               </div>
             )}
 
@@ -128,10 +123,10 @@ export function NavigationWithSearch() {
             <div className="flex items-center sm:hidden">
               <button
                 onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+                className="inline-flex items-center justify-center p-2 text-charcoal hover:opacity-70 transition-opacity duration-200"
               >
                 <svg
-                  className={`${showMobileMenu ? "hidden" : "block"} h-6 w-6`}
+                  className={clsx("h-6 w-6", showMobileMenu ? "hidden" : "block")}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -139,7 +134,7 @@ export function NavigationWithSearch() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
                 <svg
-                  className={`${showMobileMenu ? "block" : "hidden"} h-6 w-6`}
+                  className={clsx("h-6 w-6", showMobileMenu ? "block" : "hidden")}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -154,31 +149,33 @@ export function NavigationWithSearch() {
         {/* Mobile search */}
         {isAuthenticated && (
           <div className="md:hidden py-3">
-            <SearchWithHighlight className="w-full" />
+            <ProgressiveGlobalSearch className="w-full" />
           </div>
         )}
       </div>
 
       {/* Mobile menu */}
-      <div className={`${showMobileMenu ? "block" : "hidden"} sm:hidden`}>
+      <div className={clsx("sm:hidden", showMobileMenu ? "block" : "hidden")}>
         <div className="pt-2 pb-3 space-y-1">
-          {visibleItems.map((item) => (
-            <Link
+          {navItems.map((item) => (
+            <ProgressiveLink
               key={item.href}
               href={item.href}
-              className="block pl-3 pr-4 py-2 text-base font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+              className="block pl-3 pr-4 py-2 font-serif text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200"
+              onClick={() => setShowMobileMenu(false)}
             >
               {item.label}
-            </Link>
+            </ProgressiveLink>
           ))}
           {isAdmin && adminItems.map((item) => (
-            <Link
+            <ProgressiveLink
               key={item.href}
               href={item.href}
-              className="block pl-3 pr-4 py-2 text-base font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+              className="block pl-3 pr-4 py-2 font-serif text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200"
+              onClick={() => setShowMobileMenu(false)}
             >
               {item.label}
-            </Link>
+            </ProgressiveLink>
           ))}
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, integer, timestamp, boolean, uuid, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, text, varchar, integer, timestamp, boolean, uuid, foreignKey } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Users table
@@ -15,17 +15,37 @@ export const users = pgTable('users', {
   personalSite: text('personal_site'),
   location: varchar('location', { length: 255 }),
   role: varchar('role', { length: 50 }).notNull().default('head_ta'),
-  invitedBy: uuid('invited_by').references(() => users.id),
+  invitedBy: uuid('invited_by'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+  // Unclaimed profile fields
+  isUnclaimed: boolean('is_unclaimed').notNull().default(false),
+  claimedBy: uuid('claimed_by'),
+  claimedAt: timestamp('claimed_at'),
+  originalUnclaimedId: uuid('original_unclaimed_id'),
+  invitationSent: timestamp('invitation_sent'),
+  recordedBy: uuid('recorded_by'),
+  recordedAt: timestamp('recorded_at'),
+}, (table) => ({
+  invitedByFk: foreignKey({
+    columns: [table.invitedBy],
+    foreignColumns: [table.id],
+  }),
+  claimedByFk: foreignKey({
+    columns: [table.claimedBy],
+    foreignColumns: [table.id],
+  }),
+  recordedByFk: foreignKey({
+    columns: [table.recordedBy],
+    foreignColumns: [table.id],
+  }),
+}));
 
 // Courses table
 export const courses = pgTable('courses', {
   id: uuid('id').defaultRandom().primaryKey(),
   courseNumber: varchar('course_number', { length: 20 }).notNull().unique(),
   courseName: varchar('course_name', { length: 255 }).notNull(),
-  offeringPattern: varchar('offering_pattern', { length: 20 }).notNull().default('both'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -135,6 +155,17 @@ export const usersRelations = relations(users, ({ many, one }) => ({
     fields: [users.id],
     references: [userPrivacySettings.userId],
   }),
+  // Unclaimed profile relations
+  claimedByUser: one(users, {
+    fields: [users.claimedBy],
+    references: [users.id],
+  }),
+  claimedProfiles: many(users),
+  recordedByUser: one(users, {
+    fields: [users.recordedBy],
+    references: [users.id],
+  }),
+  recordedProfiles: many(users),
 }));
 
 export const coursesRelations = relations(courses, ({ many }) => ({
@@ -206,3 +237,27 @@ export const userPrivacySettingsRelations = relations(userPrivacySettings, ({ on
     references: [users.id],
   }),
 }));
+
+// Create schema object with relations for Drizzle query API
+export const schema = {
+  users,
+  courses,
+  professors,
+  courseOfferings,
+  taAssignments,
+  invitations,
+  sessions,
+  passwordResetTokens,
+  auditLogs,
+  userPrivacySettings,
+  usersRelations,
+  coursesRelations,
+  professorsRelations,
+  courseOfferingsRelations,
+  taAssignmentsRelations,
+  invitationsRelations,
+  sessionsRelations,
+  passwordResetTokensRelations,
+  auditLogsRelations,
+  userPrivacySettingsRelations,
+};

@@ -4,49 +4,14 @@ import Link from "next/link";
 import EnhancedInvitationTree from "@/components/admin/EnhancedInvitationTree";
 import { db } from "@/lib/db";
 import { invitations, users } from "@/lib/db/schema";
-import { desc, eq, and, gt, isNull, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 export const metadata: Metadata = {
   title: "Invitation Analytics - WU Head TA Directory",
   description: "View and manage all invitations in the system",
 };
 
-interface InvitationNode {
-  user: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    role: string;
-    createdAt: Date;
-  };
-  invitees: InvitationNode[];
-}
 
-async function buildInvitationTree(userId: string): Promise<InvitationNode[]> {
-  // Get all users invited by this user
-  const invitedUsers = await db
-    .select({
-      id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      email: users.email,
-      role: users.role,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .where(eq(users.invitedBy, userId));
-
-  // Recursively build the tree for each invited user
-  const invitees = await Promise.all(
-    invitedUsers.map(async (user) => ({
-      user,
-      invitees: await buildInvitationTree(user.id),
-    }))
-  );
-
-  return invitees;
-}
 
 export default async function AdminInvitationsPage() {
   await requireAdmin();
@@ -80,63 +45,7 @@ export default async function AdminInvitationsPage() {
     ? ((acceptedInvitations.length / totalInvitations) * 100).toFixed(1)
     : "0";
 
-  // Get root users (users without inviters)
-  const rootUsers = await db
-    .select({
-      id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      email: users.email,
-      role: users.role,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .where(isNull(users.invitedBy));
 
-  // Build invitation trees for root users
-  const invitationTrees = await Promise.all(
-    rootUsers.map(async (user) => ({
-      user,
-      invitees: await buildInvitationTree(user.id),
-    }))
-  );
-
-  // Helper function to render tree nodes
-  function renderTreeNode(node: InvitationNode, depth: number = 0): JSX.Element {
-    return (
-      <div key={node.user.id} className={`${depth > 0 ? 'ml-8' : ''}`}>
-        <div className="flex items-center py-2">
-          <div className="flex-shrink-0 mr-3">
-            <div className={`h-2 w-2 rounded-full ${depth === 0 ? 'bg-indigo-600' : 'bg-gray-400'}`} />
-          </div>
-          <div className="flex-1">
-            <Link
-              href={`/people/${node.user.id}`}
-              className="text-sm font-medium text-gray-900 hover:text-indigo-600"
-            >
-              {node.user.firstName} {node.user.lastName}
-            </Link>
-            <span className="ml-2 text-xs text-gray-500">
-              {node.user.email}
-            </span>
-            {node.user.role === 'admin' && (
-              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                Admin
-              </span>
-            )}
-          </div>
-          <div className="text-xs text-gray-500">
-            Joined {new Date(node.user.createdAt).toLocaleDateString()}
-          </div>
-        </div>
-        {node.invitees.length > 0 && (
-          <div className="border-l-2 border-gray-200 ml-1">
-            {node.invitees.map((invitee) => renderTreeNode(invitee, depth + 1))}
-          </div>
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -255,7 +164,7 @@ export default async function AdminInvitationsPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {inviter ? (
                           <Link
-                            href={`/people/${inviter.id}`}
+                            href={`/profile/${inviter.id}`}
                             className="text-indigo-600 hover:text-indigo-500"
                           >
                             {inviter.firstName} {inviter.lastName}

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import StatsCard from "./StatsCard";
-import { LoadingSpinner } from "../ui/LoadingSpinner";
 
 interface DashboardStats {
   totalUsers: number;

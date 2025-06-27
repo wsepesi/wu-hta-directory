@@ -79,7 +79,7 @@ export default async function SemesterPlanningPage() {
                 Semester Planning
               </h1>
               <p className="mt-2 text-sm text-gray-600">
-                Plan course offerings for upcoming semesters based on offering patterns
+                Plan course offerings for upcoming semesters
               </p>
             </div>
             <Link href="/manage/courses">
@@ -130,38 +130,6 @@ export default async function SemesterPlanningPage() {
           ))}
         </div>
 
-        {/* Course Pattern Summary */}
-        <div className="mt-12 bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
-            Course Offering Patterns
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Fall & Spring</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {courses.filter(c => c.offeringPattern === 'both').length}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Fall Only</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {courses.filter(c => c.offeringPattern === 'fall_only').length}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Spring Only</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {courses.filter(c => c.offeringPattern === 'spring_only').length}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Occasional</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {courses.filter(c => c.offeringPattern === 'sparse').length}
-              </p>
-            </div>
-          </div>
-        </div>
 
         <div className="mt-8 text-center">
           <Link

@@ -15,13 +15,20 @@ export interface User {
   invitedBy?: string;
   createdAt: Date;
   updatedAt: Date;
+  // Unclaimed profile fields
+  isUnclaimed?: boolean;
+  claimedBy?: string;
+  claimedAt?: Date;
+  originalUnclaimedId?: string;
+  invitationSent?: Date;
+  recordedBy?: string;
+  recordedAt?: Date;
 }
 
 export interface Course {
   id: string;
   courseNumber: string;
   courseName: string;
-  offeringPattern: 'both' | 'fall_only' | 'spring_only' | 'sparse';
   createdAt: Date;
 }
 
@@ -110,6 +117,10 @@ export interface CreateUserInput {
   location?: string;
   role?: 'head_ta' | 'admin';
   invitedBy?: string;
+  // Unclaimed profile fields
+  isUnclaimed?: boolean;
+  recordedBy?: string;
+  recordedAt?: Date;
 }
 
 export interface UpdateUserInput {
@@ -127,7 +138,6 @@ export interface UpdateUserInput {
 export interface CreateCourseInput {
   courseNumber: string;
   courseName: string;
-  offeringPattern: 'both' | 'fall_only' | 'spring_only' | 'sparse';
 }
 
 export interface CreateCourseOfferingInput {
@@ -143,6 +153,7 @@ export interface CreateTAAssignmentInput {
   courseOfferingId: string;
   hoursPerWeek?: number;
   responsibilities?: string;
+  autoInvite?: boolean;
 }
 
 export interface CreateProfessorInput {
@@ -154,6 +165,10 @@ export interface CreateProfessorInput {
 export interface CreateInvitationInput {
   email: string;
   invitedBy?: string;
+  suggestedCourseId?: string;
+  courseOfferingId?: string;
+  targetedForTA?: boolean;
+  message?: string;
 }
 
 // Search and filter types
@@ -163,8 +178,9 @@ export interface UserFilters {
   degreeProgram?: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface CourseFilters {
-  offeringPattern?: 'both' | 'fall_only' | 'spring_only' | 'sparse';
+  // Add filters based on actual offering data if needed
 }
 
 export interface TAAssignmentFilters {
@@ -225,4 +241,19 @@ export interface ApiResponse<T> {
 export interface ValidationResult {
   valid: boolean;
   errors?: string[];
+}
+
+// Unclaimed profile types
+export interface UnclaimedProfileInput {
+  firstName: string;
+  lastName: string;
+  email?: string;
+  gradYear?: number;
+  degreeProgram?: string;
+  location?: string;
+  recordedBy?: string;
+}
+
+export interface UnclaimedProfileWithStatus extends User {
+  hasInvitation: boolean;
 }

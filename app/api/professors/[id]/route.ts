@@ -15,14 +15,7 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' } as ApiResponse<never>,
-        { status: 401 }
-      );
-    }
+    // Public endpoint - no authentication required for GET
 
     const { id } = await params;
 
@@ -30,7 +23,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const searchParams = request.nextUrl.searchParams;
     const includeCourseOfferings = searchParams.get('include') === 'courseOfferings';
 
-    let professor: Professor | (Professor & { courseOfferings: any[] }) | null;
+    let professor: Professor | (Professor & { courseOfferings: unknown[] }) | null;
     if (includeCourseOfferings) {
       professor = await professorRepository.findWithCourseOfferings(id);
     } else {
@@ -45,7 +38,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json(
-      { data: professor } as ApiResponse<Professor | (Professor & { courseOfferings: any[] })>,
+      { data: professor } as ApiResponse<Professor | (Professor & { courseOfferings: unknown[] })>,
       { status: 200 }
     );
   } catch (error) {

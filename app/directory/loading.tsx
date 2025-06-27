@@ -1,29 +1,48 @@
-import { SkeletonList } from '@/components/ui/Skeleton';
+import CleanLayout, { CleanPageHeader } from "@/components/layout/CleanLayout";
+import { DirectoryFiltersSkeleton } from "@/components/directory/DirectoryFiltersSkeleton";
+import { DirectoryResultsSkeleton } from "@/components/directory/DirectoryResultsSkeleton";
+import { DirectoryStatsSkeleton } from "@/components/directory/DirectoryStatsSkeleton";
+import Link from "next/link";
 
 export default function DirectoryLoading() {
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="h-10 bg-gray-200 rounded w-96 mx-auto mb-4 animate-pulse" />
-          <div className="h-6 bg-gray-200 rounded w-64 mx-auto animate-pulse" />
-        </div>
+    <CleanLayout maxWidth="6xl" center>
+      <CleanPageHeader
+        title="Head TA Directory"
+        subtitle="Washington University Computer Science Head Teaching Assistants"
+        description="Browse our directory of head teaching assistants. For full access to contact information and additional features, please sign in."
+      />
 
-        <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <div className="h-5 bg-gray-200 rounded w-full animate-pulse" />
-        </div>
+      <div className="space-y-6">
+        {/* Stats skeleton */}
+        <DirectoryStatsSkeleton />
 
-        <div className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {/* Filter skeletons */}
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-10 bg-gray-200 rounded animate-pulse" />
-            ))}
-          </div>
-        </div>
+        {/* Filters skeleton */}
+        <DirectoryFiltersSkeleton />
 
-        <SkeletonList count={8} />
+        {/* Results skeleton */}
+        <DirectoryResultsSkeleton />
       </div>
-    </div>
+
+      <div className="mt-16 font-serif text-charcoal space-y-6">
+        <p className="text-lg">
+          Are you a head TA? Join the directory to connect with fellow TAs.
+        </p>
+        <nav className="font-serif space-y-4 sm:space-y-0 sm:space-x-12 sm:flex sm:justify-center">
+          <Link
+            href="/auth/signin"
+            className="text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200"
+          >
+            Sign In
+          </Link>
+          <Link
+            href="/"
+            className="text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200"
+          >
+            Back to Home
+          </Link>
+        </nav>
+      </div>
+    </CleanLayout>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "clsx";
 
@@ -34,6 +34,13 @@ function Toast({ toast, onDismiss, index }: ToastProps) {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleDismiss = useCallback(() => {
+    setIsLeaving(true);
+    setTimeout(() => {
+      onDismiss(toast.id);
+    }, 300);
+  }, [onDismiss, toast.id]);
+
   useEffect(() => {
     if (toast.duration) {
       const timer = setTimeout(() => {
@@ -41,27 +48,20 @@ function Toast({ toast, onDismiss, index }: ToastProps) {
       }, toast.duration);
       return () => clearTimeout(timer);
     }
-  }, [toast, onDismiss]);
-
-  const handleDismiss = () => {
-    setIsLeaving(true);
-    setTimeout(() => {
-      onDismiss(toast.id);
-    }, 300);
-  };
+  }, [toast.duration, handleDismiss]);
 
   const bgColor = {
-    success: "bg-green-50 border-green-200 text-green-800",
-    error: "bg-red-50 border-red-200 text-red-800",
-    info: "bg-blue-50 border-blue-200 text-blue-800",
-    warning: "bg-yellow-50 border-yellow-200 text-yellow-800",
+    success: "bg-white border-charcoal text-charcoal",
+    error: "bg-white border-red-600 text-red-600",
+    info: "bg-white border-charcoal text-charcoal",
+    warning: "bg-white border-yellow-600 text-yellow-600",
   }[toast.type];
 
   const iconColor = {
-    success: "text-green-500",
-    error: "text-red-500",
-    info: "text-blue-500",
-    warning: "text-yellow-500",
+    success: "text-charcoal",
+    error: "text-red-600",
+    info: "text-charcoal",
+    warning: "text-yellow-600",
   }[toast.type];
 
   const icon = {
@@ -90,7 +90,7 @@ function Toast({ toast, onDismiss, index }: ToastProps) {
   return (
     <div
       className={clsx(
-        `max-w-sm w-full ${bgColor} border rounded-lg shadow-lg pointer-events-auto transform transition-all duration-300 ease-out`,
+        `max-w-sm w-full ${bgColor} border pointer-events-auto transform transition-opacity duration-300 ease-out`,
         {
           'translate-y-0 opacity-100': isVisible && !isLeaving,
           'translate-y-2 opacity-0': !isVisible || isLeaving,
@@ -109,14 +109,14 @@ function Toast({ toast, onDismiss, index }: ToastProps) {
             {icon}
           </div>
           <div className="ml-3 w-0 flex-1">
-            <p className="text-sm font-medium">{toast.title}</p>
+            <p className="text-sm font-serif">{toast.title}</p>
             {toast.message && (
               <p className="mt-1 text-sm opacity-90">{toast.message}</p>
             )}
             {toast.action && (
               <button
                 onClick={toast.action.onClick}
-                className="mt-2 text-sm font-medium underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current rounded"
+                className="mt-2 text-sm font-serif underline hover:opacity-70 focus:outline-none focus:ring-1 focus:ring-charcoal focus:ring-offset-1"
               >
                 {toast.action.label}
               </button>
@@ -156,8 +156,8 @@ export function ToastContainer() {
       setToasts((prev) => [...prev, event.detail]);
     };
 
-    window.addEventListener("toast" as any, handleToast);
-    return () => window.removeEventListener("toast" as any, handleToast);
+    window.addEventListener("toast" as keyof WindowEventMap, handleToast as EventListener);
+    return () => window.removeEventListener("toast" as keyof WindowEventMap, handleToast as EventListener);
   }, []);
 
   const dismissToast = (id: string) => {

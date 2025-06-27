@@ -2,28 +2,68 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { MissingTAIndicator } from '@/components/course/MissingTAIndicator';
 import { apiClient } from '@/lib/api-client';
+import { useAuth } from '@/hooks/useAuth';
 import type { CourseOfferingWithRelations } from '@/lib/types';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface MissingTAWidgetProps {
   initialOfferings?: CourseOfferingWithRelations[];
   showAll?: boolean;
 }
 
+// Skeleton component for loading state
+function MissingTASkeleton({ showAll = false }: { showAll?: boolean }) {
+  const skeletonCount = showAll ? 8 : 5;
+  
+  return (
+    <div className="bg-white">
+      <div className="">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <Skeleton variant="text" width="300px" height="24px" />
+          {!showAll && (
+            <Skeleton variant="text" width="80px" height="16px" />
+          )}
+        </div>
+
+
+        {/* Course list */}
+        <div className="space-y-6">
+          {Array.from({ length: skeletonCount }).map((_, i) => (
+            <div key={i} className="border-t border-charcoal/20 pt-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="mb-2">
+                    <Skeleton variant="text" width="250px" height="24px" />
+                  </div>
+                  <Skeleton variant="text" width="300px" height="16px" className="mb-1" />
+                  <Skeleton variant="text" width="120px" height="16px" className="italic" />
+                </div>
+                <div className="ml-6 flex flex-col space-y-2">
+                  <Skeleton variant="text" width="100px" height="16px" />
+                  <Skeleton variant="text" width="100px" height="16px" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MissingTAWidget({ 
   initialOfferings, 
   showAll = false 
 }: MissingTAWidgetProps) {
+  const { isAuthenticated, isAdmin } = useAuth();
   const [offerings, setOfferings] = useState<CourseOfferingWithRelations[]>(
     initialOfferings || []
   );
   const [loading, setLoading] = useState(!initialOfferings);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'urgent' | 'recent'>('urgent');
 
   useEffect(() => {
     if (!initialOfferings) {
@@ -41,7 +81,7 @@ export function MissingTAWidget({
       );
 
       if (response.data) {
-        // Filter for offerings without TAs
+        // Filter for offerings without Head TAs
         const missingTAs = response.data.filter(
           offering => !offering.taAssignments || offering.taAssignments.length === 0
         );
@@ -54,27 +94,6 @@ export function MissingTAWidget({
     }
   };
 
-  const getFilteredOfferings = () => {
-    const now = Date.now();
-    const dayInMs = 24 * 60 * 60 * 1000;
-
-    switch (filter) {
-      case 'urgent':
-        return offerings.filter(o => {
-          const createdAt = new Date(o.createdAt).getTime();
-          const daysSince = Math.floor((now - createdAt) / dayInMs);
-          return daysSince > 7;
-        });
-      case 'recent':
-        return offerings.filter(o => {
-          const createdAt = new Date(o.createdAt).getTime();
-          const daysSince = Math.floor((now - createdAt) / dayInMs);
-          return daysSince <= 7;
-        });
-      default:
-        return offerings;
-    }
-  };
 
   const getDaysWaiting = (createdAt: string) => {
     const created = new Date(createdAt).getTime();
@@ -82,160 +101,85 @@ export function MissingTAWidget({
     return Math.floor((now - created) / (24 * 60 * 60 * 1000));
   };
 
-  const getUrgencyBadge = (days: number) => {
-    if (days > 14) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-          URGENT
-        </span>
-      );
-    } else if (days > 7) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-          High Priority
-        </span>
-      );
-    } else {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-          New
-        </span>
-      );
-    }
-  };
 
-  const filteredOfferings = getFilteredOfferings();
-  const displayOfferings = showAll ? filteredOfferings : filteredOfferings.slice(0, 5);
+  const displayOfferings = showAll ? offerings : offerings.slice(0, 5);
 
   if (loading) {
-    return (
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-center">
-          <LoadingSpinner />
-        </div>
-      </div>
-    );
+    return <MissingTASkeleton showAll={showAll} />;
   }
 
   if (error) {
     return (
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white p-6">
         <ErrorMessage message={error} />
       </div>
     );
   }
 
   return (
-    <div className="bg-white shadow rounded-lg">
-      <div className="px-4 py-5 sm:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-medium text-gray-900">Courses Missing TAs</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {offerings.length} courses need head TAs assigned
-            </p>
-          </div>
+    <div className="bg-white">
+      <div className="">
+        <div className="flex items-center justify-between mb-6">
+          <p className="font-serif text-lg text-charcoal">
+            {offerings.length} courses without recorded Head TAs
+          </p>
           {!showAll && offerings.length > 5 && (
             <Link
-              href="/dashboard/missing-tas"
-              className="text-sm text-indigo-600 hover:text-indigo-500"
+              href="/dashboard/missing-records"
+              className="font-serif text-sm text-charcoal hover:opacity-70 transition-opacity duration-200"
             >
               View all →
             </Link>
           )}
         </div>
 
-        {showAll && (
-          <div className="mb-4 flex space-x-2">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-3 py-1 text-sm rounded-md ${
-                filter === 'all'
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              All ({offerings.length})
-            </button>
-            <button
-              onClick={() => setFilter('urgent')}
-              className={`px-3 py-1 text-sm rounded-md ${
-                filter === 'urgent'
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Urgent ({offerings.filter(o => getDaysWaiting(o.createdAt) > 7).length})
-            </button>
-            <button
-              onClick={() => setFilter('recent')}
-              className={`px-3 py-1 text-sm rounded-md ${
-                filter === 'recent'
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Recent ({offerings.filter(o => getDaysWaiting(o.createdAt) <= 7).length})
-            </button>
-          </div>
-        )}
 
         {displayOfferings.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-sm text-gray-500">
-              {filter === 'all' 
-                ? 'All courses have TAs assigned!'
-                : `No ${filter} courses missing TAs`}
+          <div className="text-center py-12">
+            <p className="font-serif text-lg text-charcoal/60">
+              All courses have recorded Head TAs!
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-6">
             {displayOfferings.map((offering) => {
-              const days = getDaysWaiting(offering.createdAt);
+              const days = getDaysWaiting(offering.createdAt.toString());
               return (
                 <div
                   key={offering.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
+                  className="border-t border-charcoal/20 pt-6"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-sm font-medium text-gray-900">
-                          {offering.course?.courseNumber}: {offering.course?.courseName}
-                        </h4>
-                        {getUrgencyBadge(days)}
-                      </div>
-                      <p className="mt-1 text-sm text-gray-500">
+                      <h4 className="font-serif text-lg text-charcoal mb-2">
+                        {offering.course?.courseNumber}: {offering.course?.courseName}
+                      </h4>
+                      <p className="text-sm text-charcoal/80 mb-1">
                         {offering.semester} • Professor: {
                           offering.professor 
                             ? `${offering.professor.firstName} ${offering.professor.lastName}`
                             : 'Not assigned'
                         }
                       </p>
-                      <p className="mt-1 text-xs text-gray-400">
-                        Waiting for {days} day{days !== 1 ? 's' : ''}
+                      <p className="font-serif text-sm italic text-charcoal/60">
+                        Unrecorded for {days} day{days !== 1 ? 's' : ''}
                       </p>
-                      <div className="mt-2">
-                        <MissingTAIndicator
-                          currentTAs={0}
-                          requiredTAs={1}
-                          size="sm"
-                        />
-                      </div>
                     </div>
-                    <div className="ml-4 flex flex-col space-y-2">
+                    <div className="ml-6 flex flex-col space-y-2">
                       <Link
                         href={`/courses/${offering.course?.courseNumber.replace(/\s+/g, '-')}`}
-                        className="text-sm text-indigo-600 hover:text-indigo-500"
+                        className="font-serif text-sm text-charcoal hover:opacity-70 transition-opacity duration-200"
                       >
-                        View Course
+                        View Course →
                       </Link>
-                      <Link
-                        href={`/auth/invite?courseOfferingId=${offering.id}`}
-                        className="text-sm text-green-600 hover:text-green-500"
-                      >
-                        Invite TA
-                      </Link>
+                      {isAuthenticated && isAdmin && (
+                        <Link
+                          href={`/auth/invite?courseOfferingId=${offering.id}`}
+                          className="font-serif text-sm text-charcoal hover:opacity-70 transition-opacity duration-200"
+                        >
+                          Record Head TA →
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -244,10 +188,10 @@ export function MissingTAWidget({
           </div>
         )}
 
-        {showAll && filteredOfferings.length > displayOfferings.length && (
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-500">
-              Showing {displayOfferings.length} of {filteredOfferings.length} courses
+        {showAll && offerings.length > displayOfferings.length && (
+          <div className="mt-8 text-center">
+            <p className="font-serif text-sm italic text-charcoal/60">
+              Showing {displayOfferings.length} of {offerings.length} courses
             </p>
           </div>
         )}

@@ -1,9 +1,19 @@
 #!/usr/bin/env node
-import { sql } from '@vercel/postgres';
-import fs from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
-import { env } from '../lib/env';
+import * as dotenv from 'dotenv';
+import { createClient } from '@vercel/postgres';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as crypto from 'crypto';
+// import { env } from '../lib/env-validation';
+
+dotenv.config({ path: '.env.local' });
+
+console.log('Attempting to use connection string:', process.env.POSTGRES_URL);
+
+// Create client with connection string
+const client = createClient({
+  connectionString: process.env.POSTGRES_URL,
+});
 
 const MIGRATIONS_DIR = path.join(process.cwd(), 'migrations');
 const MIGRATIONS_TABLE = 'schema_migrations';
@@ -22,8 +32,8 @@ function log(message: string, color: keyof typeof colors = 'reset') {
 }
 
 async function ensureMigrationsTable() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS ${sql(MIGRATIONS_TABLE)} (
+  await client.sql`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
       id SERIAL PRIMARY KEY,
       filename VARCHAR(255) NOT NULL UNIQUE,
       checksum VARCHAR(64) NOT NULL,
@@ -36,11 +46,15 @@ async function getMigrationChecksum(content: string): Promise<string> {
   return crypto.createHash('sha256').update(content).digest('hex');
 }
 
+interface MigrationRow {
+  filename: string;
+}
+
 async function getExecutedMigrations(): Promise<Set<string>> {
-  const result = await sql`
-    SELECT filename FROM ${sql(MIGRATIONS_TABLE)}
+  const result = await client.sql`
+    SELECT filename FROM schema_migrations
   `;
-  return new Set(result.rows.map(row => row.filename));
+  return new Set(result.rows.map((row) => (row as MigrationRow).filename));
 }
 
 async function getPendingMigrations(): Promise<string[]> {
@@ -66,21 +80,21 @@ async function runMigration(filename: string) {
   
   // Start transaction
   try {
-    await sql`BEGIN`;
+    await client.sql`BEGIN`;
     
     // Execute migration
-    await sql.query(content);
+    await client.query(content);
     
     // Record migration
-    await sql`
-      INSERT INTO ${sql(MIGRATIONS_TABLE)} (filename, checksum)
+    await client.sql`
+      INSERT INTO schema_migrations (filename, checksum)
       VALUES (${filename}, ${checksum})
     `;
     
-    await sql`COMMIT`;
+    await client.sql`COMMIT`;
     log(`✓ Applied migration: ${filename}`, 'green');
   } catch (error) {
-    await sql`ROLLBACK`;
+    await client.sql`ROLLBACK`;
     throw error;
   }
 }
@@ -156,9 +170,9 @@ async function rollbackMigration() {
   
   try {
     // Get last migration
-    const result = await sql`
+    const result = await client.sql`
       SELECT filename 
-      FROM ${sql(MIGRATIONS_TABLE)} 
+      FROM schema_migrations 
       ORDER BY executed_at DESC 
       LIMIT 1
     `;
@@ -168,30 +182,36 @@ async function rollbackMigration() {
       return;
     }
     
-    const lastMigration = result.rows[0].filename;
+    const lastMigration = (result.rows[0] as MigrationRow).filename;
     const filepath = path.join(MIGRATIONS_DIR, lastMigration);
     const content = await fs.readFile(filepath, 'utf-8');
     
     // Look for DOWN migration section
     const downMatch = content.match(/-- DOWN Migration[\s\S]*?BEGIN;([\s\S]*?)COMMIT;/);
     
-    if (!downMatch) {
+    if (!downMatch || !downMatch[1]) {
       log(`No rollback found in migration: ${lastMigration}`, 'red');
       throw new Error('Rollback SQL not found');
     }
     
+    const rollbackSql = downMatch[1].trim();
+    if (!rollbackSql) {
+      log(`Empty rollback SQL in migration: ${lastMigration}`, 'red');
+      throw new Error('Rollback SQL is empty');
+    }
+    
     // Execute rollback
-    await sql`BEGIN`;
+    await client.sql`BEGIN`;
     try {
-      await sql.query(downMatch[1]);
-      await sql`
-        DELETE FROM ${sql(MIGRATIONS_TABLE)} 
+      await client.query(rollbackSql);
+      await client.sql`
+        DELETE FROM schema_migrations 
         WHERE filename = ${lastMigration}
       `;
-      await sql`COMMIT`;
+      await client.sql`COMMIT`;
       log(`✓ Rolled back migration: ${lastMigration}`, 'green');
     } catch (error) {
-      await sql`ROLLBACK`;
+      await client.sql`ROLLBACK`;
       throw error;
     }
     
@@ -213,14 +233,22 @@ async function migrationStatus() {
     const migrationFiles = allFiles.filter(file => file.endsWith('.sql')).sort();
     
     // Get executed migrations
-    const result = await sql`
+    const result = await client.sql`
       SELECT filename, executed_at 
-      FROM ${sql(MIGRATIONS_TABLE)}
+      FROM schema_migrations
       ORDER BY executed_at
     `;
     
+    interface MigrationStatusRow {
+      filename: string;
+      executed_at: Date;
+    }
+    
     const executed = new Map(
-      result.rows.map(row => [row.filename, row.executed_at])
+      result.rows.map((row) => {
+        const statusRow = row as MigrationStatusRow;
+        return [statusRow.filename, statusRow.executed_at];
+      })
     );
     
     log('\nMigrations:', 'yellow');

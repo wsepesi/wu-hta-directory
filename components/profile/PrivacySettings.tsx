@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 
 interface PrivacySettingsData {
@@ -49,7 +48,7 @@ export default function PrivacySettings({ userId, initialSettings }: PrivacySett
       }
 
       setSuccess(true);
-    } catch (err) {
+    } catch {
       setError("Failed to save privacy settings. Please try again.");
     } finally {
       setSaving(false);
@@ -143,14 +142,7 @@ export default function PrivacySettings({ userId, initialSettings }: PrivacySett
           onClick={handleSave}
           disabled={saving}
         >
-          {saving ? (
-            <>
-              <LoadingSpinner size="sm" className="mr-2" />
-              Saving...
-            </>
-          ) : (
-            "Save Privacy Settings"
-          )}
+          {saving ? "Saving..." : "Save Privacy Settings"}
         </Button>
       </div>
     </div>

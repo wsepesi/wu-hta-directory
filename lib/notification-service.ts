@@ -1,19 +1,19 @@
 import { sendEmail } from './email-service';
 import { db } from './db';
 import { users, courses, courseOfferings, professors } from './db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
-interface TAAssignmentNotification {
+interface ProfileClaimNotification {
   taId: string;
   courseOfferingId: string;
   hoursPerWeek: number;
   assignedBy: string;
 }
 
-interface TARemovalNotification {
+interface RecordUpdateNotification {
   taId: string;
   courseOfferingId: string;
-  removedBy: string;
+  updatedBy: string;
 }
 
 interface MissingTANotification {
@@ -26,14 +26,27 @@ interface CourseUpdateNotification {
   courseOfferingId: string;
   changeType: 'professor_changed' | 'schedule_changed' | 'deleted';
   taIds: string[];
-  details?: any;
+  details?: Record<string, unknown>;
+}
+
+interface TARemovalNotification {
+  taId: string;
+  courseOfferingId: string;
+  removedBy: string;
+}
+
+interface TAAssignmentNotification {
+  taId: string;
+  courseOfferingId: string;
+  hoursPerWeek: number;
+  assignedBy: string;
 }
 
 export class NotificationService {
   /**
-   * Send notification when a TA is assigned to a course
+   * Send notification when a TA profile is available to claim
    */
-  async notifyTAAssignment(data: TAAssignmentNotification): Promise<void> {
+  async notifyProfileClaimAvailable(data: ProfileClaimNotification): Promise<void> {
     try {
       // Get TA details
       const ta = await db
@@ -73,35 +86,41 @@ export class NotificationService {
         : 'TBD';
 
       const emailContent = `
-        <h2>You've been assigned as a Head TA!</h2>
+        <h2>You've been recorded as a Head TA - claim your profile!</h2>
         <p>Hi ${ta[0].firstName},</p>
-        <p>You have been assigned as a Head TA for the following course:</p>
+        <p>You have been recorded as a Head TA for the following course. Claim your profile to manage your information:</p>
         <ul>
           <li><strong>Course:</strong> ${offering.courseNumber}: ${offering.courseName}</li>
           <li><strong>Semester:</strong> ${offering.semester}</li>
           <li><strong>Professor:</strong> ${professorName}</li>
           <li><strong>Hours per week:</strong> ${data.hoursPerWeek}</li>
         </ul>
-        <p>Please log in to the Head TA Directory to view more details and manage your assignments.</p>
-        <p>If you have any questions or concerns about this assignment, please contact the administrator.</p>
+        <p>Please claim your profile in the Head TA Directory to:</p>
+        <ul>
+          <li>Update your professional information</li>
+          <li>Control your privacy settings</li>
+          <li>Connect with other Head TAs</li>
+          <li>Showcase your teaching experience</li>
+        </ul>
+        <p>If you believe this record is incorrect, please contact the administrator.</p>
       `;
 
       await sendEmail({
         to: ta[0].email,
-        subject: `TA Assignment: ${offering.courseNumber} - ${offering.semester}`,
+        subject: `Claim Your Head TA Profile for ${offering.courseNumber} - ${offering.semester}`,
         html: emailContent,
       });
 
-      console.log(`TA assignment notification sent to ${ta[0].email}`);
+      console.log(`Profile claim notification sent to ${ta[0].email}`);
     } catch (error) {
-      console.error('Failed to send TA assignment notification:', error);
+      console.error('Failed to send profile claim notification:', error);
     }
   }
 
   /**
-   * Send notification when a TA is removed from a course
+   * Send notification when a TA record is updated
    */
-  async notifyTARemoval(data: TARemovalNotification): Promise<void> {
+  async notifyRecordUpdate(data: RecordUpdateNotification): Promise<void> {
     try {
       // Get TA details
       const ta = await db
@@ -135,9 +154,9 @@ export class NotificationService {
       const offering = offeringDetails[0];
 
       const emailContent = `
-        <h2>TA Assignment Removed</h2>
+        <h2>Head TA Record Updated</h2>
         <p>Hi ${ta[0].firstName},</p>
-        <p>Your Head TA assignment has been removed for the following course:</p>
+        <p>Your Head TA record has been updated for the following course:</p>
         <ul>
           <li><strong>Course:</strong> ${offering.courseNumber}: ${offering.courseName}</li>
           <li><strong>Semester:</strong> ${offering.semester}</li>
@@ -147,13 +166,13 @@ export class NotificationService {
 
       await sendEmail({
         to: ta[0].email,
-        subject: `TA Assignment Removed: ${offering.courseNumber} - ${offering.semester}`,
+        subject: `Head TA Record Updated: ${offering.courseNumber} - ${offering.semester}`,
         html: emailContent,
       });
 
-      console.log(`TA removal notification sent to ${ta[0].email}`);
+      console.log(`Record update notification sent to ${ta[0].email}`);
     } catch (error) {
-      console.error('Failed to send TA removal notification:', error);
+      console.error('Failed to send record update notification:', error);
     }
   }
 
@@ -202,11 +221,8 @@ export class NotificationService {
         ? `${offering.professorFirstName} ${offering.professorLastName}`
         : 'Not assigned';
 
-      const urgencyLevel = data.daysSinceCreated > 14 ? 'URGENT' : 
-                          data.daysSinceCreated > 7 ? 'High Priority' : 'New';
-
       const emailContent = `
-        <h2>${urgencyLevel}: Course Missing Head TA</h2>
+        <h2>Course Missing Head TA</h2>
         <p>The following course has been without a Head TA for <strong>${data.daysSinceCreated} days</strong>:</p>
         <ul>
           <li><strong>Course:</strong> ${offering.courseNumber}: ${offering.courseName}</li>
@@ -215,11 +231,11 @@ export class NotificationService {
         </ul>
         <p>Please take action to:</p>
         <ol>
-          <li>Assign an existing Head TA to this course</li>
-          <li>Send targeted invitations to potential TAs</li>
+          <li>Record a Head TA for this course</li>
+          <li>Send invitations to claim profiles</li>
           <li>Contact the professor to discuss TA requirements</li>
         </ol>
-        <p><a href="${process.env.NEXTAUTH_URL}/dashboard/missing-tas">View Missing TAs Dashboard</a></p>
+        <p><a href="${process.env.NEXTAUTH_URL}/dashboard/missing-records">View Missing TAs Dashboard</a></p>
       `;
 
       // Send to all admin emails
@@ -227,7 +243,7 @@ export class NotificationService {
         adminEmails.map(email =>
           sendEmail({
             to: email,
-            subject: `${urgencyLevel}: ${offering.courseNumber} needs a Head TA`,
+            subject: `${offering.courseNumber} needs a Head TA`,
             html: emailContent,
           })
         )
@@ -344,6 +360,170 @@ export class NotificationService {
   }
 
   /**
+   * Notify TA when they are removed from a course assignment
+   */
+  async notifyTARemoval(data: TARemovalNotification): Promise<void> {
+    try {
+      // Get TA details
+      const ta = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, data.taId))
+        .limit(1);
+
+      if (!ta[0] || !ta[0].email) {
+        console.error('TA not found or has no email');
+        return;
+      }
+
+      // Get course offering details
+      const offeringDetails = await db
+        .select({
+          courseNumber: courses.courseNumber,
+          courseName: courses.courseName,
+          semester: courseOfferings.semester,
+          professorFirstName: professors.firstName,
+          professorLastName: professors.lastName,
+        })
+        .from(courseOfferings)
+        .innerJoin(courses, eq(courseOfferings.courseId, courses.id))
+        .leftJoin(professors, eq(courseOfferings.professorId, professors.id))
+        .where(eq(courseOfferings.id, data.courseOfferingId))
+        .limit(1);
+
+      if (!offeringDetails[0]) {
+        console.error('Course offering not found');
+        return;
+      }
+
+      const offering = offeringDetails[0];
+      const professorName = offering.professorFirstName && offering.professorLastName
+        ? `${offering.professorFirstName} ${offering.professorLastName}`
+        : 'Not assigned';
+
+      // Get remover details (admin who removed the assignment)
+      const remover = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, data.removedBy))
+        .limit(1);
+
+      const removerName = remover[0] 
+        ? `${remover[0].firstName} ${remover[0].lastName}`
+        : 'Administrator';
+
+      const emailContent = `
+        <h2>TA Assignment Removed</h2>
+        <p>Hi ${ta[0].firstName},</p>
+        <p>Your Head TA assignment has been removed from the following course:</p>
+        <ul>
+          <li><strong>Course:</strong> ${offering.courseNumber}: ${offering.courseName}</li>
+          <li><strong>Semester:</strong> ${offering.semester}</li>
+          <li><strong>Professor:</strong> ${professorName}</li>
+        </ul>
+        <p>This change was made by: ${removerName}</p>
+        <p>If you believe this is an error or have questions about this change, please contact the administrator.</p>
+      `;
+
+      await sendEmail({
+        to: ta[0].email,
+        subject: `TA Assignment Removed: ${offering.courseNumber} - ${offering.semester}`,
+        html: emailContent,
+      });
+
+      console.log(`TA removal notification sent to ${ta[0].email}`);
+    } catch (error) {
+      console.error('Failed to send TA removal notification:', error);
+    }
+  }
+
+  /**
+   * Notify TA when they are assigned to a course
+   */
+  async notifyTAAssignment(data: TAAssignmentNotification): Promise<void> {
+    try {
+      // Get TA details
+      const ta = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, data.taId))
+        .limit(1);
+
+      if (!ta[0] || !ta[0].email) {
+        console.error('TA not found or has no email');
+        return;
+      }
+
+      // Get course offering details
+      const offeringDetails = await db
+        .select({
+          courseNumber: courses.courseNumber,
+          courseName: courses.courseName,
+          semester: courseOfferings.semester,
+          professorFirstName: professors.firstName,
+          professorLastName: professors.lastName,
+        })
+        .from(courseOfferings)
+        .innerJoin(courses, eq(courseOfferings.courseId, courses.id))
+        .leftJoin(professors, eq(courseOfferings.professorId, professors.id))
+        .where(eq(courseOfferings.id, data.courseOfferingId))
+        .limit(1);
+
+      if (!offeringDetails[0]) {
+        console.error('Course offering not found');
+        return;
+      }
+
+      const offering = offeringDetails[0];
+      const professorName = offering.professorFirstName && offering.professorLastName
+        ? `${offering.professorFirstName} ${offering.professorLastName}`
+        : 'TBD';
+
+      // Get assigner details (admin who created the assignment)
+      const assigner = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, data.assignedBy))
+        .limit(1);
+
+      const assignerName = assigner[0] 
+        ? `${assigner[0].firstName} ${assigner[0].lastName}`
+        : 'Administrator';
+
+      const emailContent = `
+        <h2>You've been assigned as a Head TA</h2>
+        <p>Hi ${ta[0].firstName},</p>
+        <p>You have been assigned as a Head TA for the following course:</p>
+        <ul>
+          <li><strong>Course:</strong> ${offering.courseNumber}: ${offering.courseName}</li>
+          <li><strong>Semester:</strong> ${offering.semester}</li>
+          <li><strong>Professor:</strong> ${professorName}</li>
+          <li><strong>Hours per week:</strong> ${data.hoursPerWeek}</li>
+        </ul>
+        <p>This assignment was created by: ${assignerName}</p>
+        <p>Please log in to the Head TA Directory to:</p>
+        <ul>
+          <li>Update your professional information</li>
+          <li>Set your privacy preferences</li>
+          <li>View your responsibilities and workload</li>
+          <li>Connect with other Head TAs</li>
+        </ul>
+        <p>If you have any questions about this assignment, please contact the administrator.</p>
+      `;
+
+      await sendEmail({
+        to: ta[0].email,
+        subject: `Head TA Assignment: ${offering.courseNumber} - ${offering.semester}`,
+        html: emailContent,
+      });
+
+      console.log(`TA assignment notification sent to ${ta[0].email}`);
+    } catch (error) {
+      console.error('Failed to send TA assignment notification:', error);
+    }
+  }
+
+  /**
    * Send daily digest of missing TAs to admins
    */
   async sendMissingTADigest(): Promise<void> {
@@ -385,17 +565,9 @@ export class NotificationService {
         return;
       }
 
-      const urgentCount = missingAssignments.filter(a => {
-        const days = Math.floor(
-          (Date.now() - new Date(a.createdAt).getTime()) / (1000 * 60 * 60 * 24)
-        );
-        return days > 14;
-      }).length;
-
       const emailContent = `
         <h2>Daily Missing TA Report</h2>
         <p>There are currently <strong>${missingAssignments.length} courses</strong> without Head TAs.</p>
-        ${urgentCount > 0 ? `<p class="urgent">⚠️ ${urgentCount} courses have been waiting for more than 14 days!</p>` : ''}
         
         <h3>Courses Missing TAs:</h3>
         <table border="1" cellpadding="5" cellspacing="0">
@@ -404,7 +576,6 @@ export class NotificationService {
               <th>Course</th>
               <th>Semester</th>
               <th>Days Waiting</th>
-              <th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -412,27 +583,25 @@ export class NotificationService {
               const days = Math.floor(
                 (Date.now() - new Date(a.createdAt).getTime()) / (1000 * 60 * 60 * 24)
               );
-              const status = days > 14 ? 'URGENT' : days > 7 ? 'High' : 'Normal';
               return `
                 <tr>
                   <td>${a.courseNumber}: ${a.courseName}</td>
                   <td>${a.semester}</td>
                   <td>${days}</td>
-                  <td>${status}</td>
                 </tr>
               `;
             }).join('')}
           </tbody>
         </table>
         
-        <p><a href="${process.env.NEXTAUTH_URL}/dashboard/missing-tas">View Full Dashboard</a></p>
+        <p><a href="${process.env.NEXTAUTH_URL}/dashboard/missing-records">View Full Dashboard</a></p>
       `;
 
       await Promise.all(
         adminEmails.map(email =>
           sendEmail({
             to: email,
-            subject: `Daily Report: ${missingAssignments.length} courses need TAs${urgentCount > 0 ? ' (URGENT)' : ''}`,
+            subject: `Daily Report: ${missingAssignments.length} courses need TAs`,
             html: emailContent,
           })
         )

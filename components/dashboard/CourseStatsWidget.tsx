@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface CourseStats {
   totalCourses: number;
@@ -14,8 +14,59 @@ interface CourseStats {
   upcomingSemester: {
     name: string;
     plannedOfferings: number;
-    needsTAs: number;
+    missingHeadTARecords: number;
   };
+}
+
+// Skeleton component for loading state
+function CourseStatsSkeleton() {
+  return (
+    <div className="bg-white rounded-lg shadow">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-200">
+        <Skeleton variant="text" width="160px" height="24px" />
+      </div>
+      
+      <div className="p-6 space-y-6">
+        {/* Overview Stats */}
+        <div className="grid grid-cols-2 gap-4">
+          {[1, 2].map((i) => (
+            <div key={i}>
+              <Skeleton variant="text" width="100px" height="16px" className="mb-2" />
+              <Skeleton variant="text" width="48px" height="32px" />
+            </div>
+          ))}
+        </div>
+
+        {/* TA Assignment Rate */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <Skeleton variant="text" width="140px" height="16px" />
+            <Skeleton variant="text" width="48px" height="16px" />
+          </div>
+          <Skeleton variant="rectangular" width="100%" height="8px" className="rounded-full" />
+        </div>
+
+        {/* Issues Section */}
+        <div>
+          <Skeleton variant="text" width="80px" height="16px" className="mb-3" />
+          <div className="space-y-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100">
+                <Skeleton variant="text" width="180px" height="16px" />
+                <Skeleton variant="text" width="60px" height="16px" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="pt-4 border-t">
+          <Skeleton variant="rectangular" width="100%" height="36px" className="rounded-md" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function CourseStatsWidget() {
@@ -48,7 +99,7 @@ export function CourseStatsWidget() {
         upcomingSemester: data.upcomingSemester || {
           name: 'Next Semester',
           plannedOfferings: 0,
-          needsTAs: 0,
+          missingHeadTARecords: 0,
         },
       };
 
@@ -61,11 +112,7 @@ export function CourseStatsWidget() {
   };
 
   if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6 flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
+    return <CourseStatsSkeleton />;
   }
 
   if (!stats) {
@@ -114,7 +161,7 @@ export function CourseStatsWidget() {
         <div className="space-y-3">
           {stats.coursesWithoutTAs > 0 && (
             <Link
-              href="/dashboard/missing-tas"
+              href="/dashboard/missing-records"
               className="flex items-center justify-between p-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
             >
               <div className="flex items-center">
@@ -151,11 +198,11 @@ export function CourseStatsWidget() {
                 {stats.upcomingSemester.plannedOfferings}
               </span>
             </div>
-            {stats.upcomingSemester.needsTAs > 0 && (
+            {stats.upcomingSemester.missingHeadTARecords > 0 && (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Need TAs</span>
                 <span className="text-sm font-medium text-red-600">
-                  {stats.upcomingSemester.needsTAs}
+                  {stats.upcomingSemester.missingHeadTARecords}
                 </span>
               </div>
             )}
@@ -171,7 +218,7 @@ export function CourseStatsWidget() {
             Manage Courses
           </Link>
           <Link
-            href="/dashboard/missing-tas"
+            href="/dashboard/missing-records"
             className="block w-full text-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
           >
             View Missing TAs

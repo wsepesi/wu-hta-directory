@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface User {
   id: string;
@@ -31,6 +31,67 @@ interface InvitationTreeNodeProps {
   isRoot?: boolean;
   expanded?: boolean;
   onToggle?: () => void;
+}
+
+// Skeleton component for loading state
+function InvitationTreeSkeleton() {
+  return (
+    <div className="bg-white shadow rounded-lg">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <Skeleton variant="text" width="140px" height="24px" />
+          <div className="flex items-center space-x-4">
+            <Skeleton variant="rectangular" width="200px" height="32px" className="rounded-md" />
+            <Skeleton variant="text" width="80px" height="20px" />
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+        <div className="grid grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center">
+              <Skeleton variant="text" width="100px" height="16px" className="mr-2" />
+              <Skeleton variant="text" width="40px" height="16px" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tree structure */}
+      <div className="p-6">
+        <div className="space-y-4">
+          {/* Root nodes */}
+          {[1, 2, 3].map((i) => (
+            <div key={i}>
+              <div className="flex items-center py-2">
+                <Skeleton variant="rectangular" width={16} height={16} className="mr-2 rounded" />
+                <Skeleton variant="circular" width={12} height={12} className="mr-3" />
+                <Skeleton variant="text" width="200px" height="16px" className="mr-2" />
+                <Skeleton variant="text" width="120px" height="14px" />
+              </div>
+              {/* Child nodes */}
+              <div className="ml-6 space-y-2">
+                {[1, 2].map((j) => (
+                  <div key={j} className="flex items-center py-2">
+                    <div className="flex items-center mr-3">
+                      <Skeleton variant="rectangular" width={16} height={2} />
+                      <Skeleton variant="rectangular" width={2} height={24} />
+                    </div>
+                    <Skeleton variant="circular" width={12} height={12} className="mr-3" />
+                    <Skeleton variant="text" width="180px" height="16px" className="mr-2" />
+                    <Skeleton variant="text" width="100px" height="14px" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function InvitationTreeNode({ 
@@ -96,7 +157,7 @@ function InvitationTreeNode({
         
         <div className="flex-1 min-w-0 flex items-center">
           <Link
-            href={`/people/${node.user.id}`}
+            href={`/profile/${node.user.id}`}
             className="text-sm font-medium text-gray-900 hover:text-indigo-600 truncate"
           >
             {node.user.firstName} {node.user.lastName}
@@ -194,11 +255,7 @@ export default function EnhancedInvitationTree() {
     : treeData;
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <LoadingSpinner />
-      </div>
-    );
+    return <InvitationTreeSkeleton />;
   }
 
   if (error) {

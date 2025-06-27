@@ -1,8 +1,10 @@
-import { eq, and, or, desc, asc, like } from 'drizzle-orm';
+import { eq, and, or, asc, like, count } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { professors } from '@/lib/db/schema';
+import { withTimeoutFallback } from '@/lib/db/query-timeout';
 import type {
   Professor,
+  Course,
   CreateProfessorInput,
 } from '@/lib/types';
 
@@ -46,14 +48,15 @@ export class ProfessorRepository {
    */
   async findAll(): Promise<Professor[]> {
     try {
-      const result = await db.select()
+      const query = db.select()
         .from(professors)
         .orderBy(asc(professors.lastName), asc(professors.firstName));
       
+      const result = await withTimeoutFallback(query, [], 5000, 'ProfessorRepository.findAll');
       return result;
     } catch (error) {
       console.error('Error finding all professors:', error);
-      throw new Error('Failed to find professors');
+      return []; // Return empty array instead of throwing
     }
   }
 
@@ -88,7 +91,7 @@ export class ProfessorRepository {
    */
   async update(id: string, input: Partial<CreateProfessorInput>): Promise<Professor> {
     try {
-      const updateData: any = { ...input };
+      const updateData: Partial<CreateProfessorInput> = { ...input };
       if (input.email) {
         updateData.email = input.email.toLowerCase();
       }
@@ -131,7 +134,7 @@ export class ProfessorRepository {
   /**
    * Find professor with their course offerings
    */
-  async findWithCourseOfferings(id: string): Promise<Professor & { courseOfferings: any[] } | null> {
+  async findWithCourseOfferings(id: string): Promise<Professor & { courseOfferings: Array<{ course: Course; year: number; season: string; id: string; courseId: string; professorId?: string; semester: string; updatedBy?: string; createdAt: Date }> } | null> {
     try {
       const result = await db.query.professors.findFirst({
         where: eq(professors.id, id),
@@ -145,7 +148,32 @@ export class ProfessorRepository {
         },
       });
       
-      return result || null;
+      if (!result) return null;
+      
+      // Type assertion with proper mapping
+      return {
+        id: result.id,
+        firstName: result.firstName,
+        lastName: result.lastName,
+        email: result.email,
+        createdAt: result.createdAt,
+        courseOfferings: result.courseOfferings.map(offering => ({
+          id: offering.id,
+          courseId: offering.courseId,
+          professorId: offering.professorId || undefined,
+          semester: offering.semester,
+          year: offering.year,
+          season: offering.season as 'Fall' | 'Spring',
+          updatedBy: offering.updatedBy || undefined,
+          createdAt: offering.createdAt,
+          course: {
+            id: offering.course.id,
+            courseNumber: offering.course.courseNumber,
+            courseName: offering.course.courseName,
+            createdAt: offering.course.createdAt
+          }
+        }))
+      };
     } catch (error) {
       console.error('Error finding professor with course offerings:', error);
       throw new Error('Failed to find professor');
@@ -183,10 +211,10 @@ export class ProfessorRepository {
    */
   async count(): Promise<number> {
     try {
-      const result = await db.select({ count: professors.id })
+      const result = await db.select({ count: count() })
         .from(professors);
       
-      return result.length;
+      return Number(result[0]?.count) || 0;
     } catch (error) {
       console.error('Error counting professors:', error);
       throw new Error('Failed to count professors');
@@ -256,7 +284,7 @@ export class ProfessorRepository {
         lastName: prof.lastName,
         email: prof.email,
         createdAt: prof.createdAt,
-        courseCount: prof.courseOfferings.length,
+        courseCount: Array.isArray(prof.courseOfferings) ? prof.courseOfferings.length : 0,
       }));
     } catch (error) {
       console.error('Error finding professors with course count:', error);

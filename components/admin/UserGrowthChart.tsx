@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LoadingSpinner } from "../ui/LoadingSpinner";
 import { SimpleLineChart } from "../charts/SimpleLineChart";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface ChartData {
   labels: string[];
@@ -12,6 +12,32 @@ interface ChartData {
     borderColor: string;
     backgroundColor: string;
   }[];
+}
+
+// Skeleton component for loading state
+function UserGrowthChartSkeleton() {
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-4">
+        <Skeleton variant="text" width="200px" height="24px" />
+        <Skeleton variant="text" width="100px" height="16px" />
+      </div>
+      
+      {/* Chart area */}
+      <Skeleton variant="rectangular" width="100%" height="200px" className="mb-4" />
+      
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+        {[1, 2].map((i) => (
+          <div key={i}>
+            <Skeleton variant="text" width="120px" height="16px" className="mb-2" />
+            <Skeleton variant="text" width="48px" height="32px" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function UserGrowthChart() {
@@ -40,11 +66,7 @@ export default function UserGrowthChart() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64 bg-white rounded-lg shadow">
-        <LoadingSpinner />
-      </div>
-    );
+    return <UserGrowthChartSkeleton />;
   }
 
   if (error || !chartData) {

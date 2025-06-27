@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { apiClient } from '@/lib/api-client';
 import type { CreateProfessorInput, Professor } from '@/lib/types';
 
@@ -173,7 +172,7 @@ export function ProfessorForm({ professor, onSuccess, onCancel }: ProfessorFormP
           </Button>
         )}
         <Button type="submit" disabled={loading}>
-          {loading ? <LoadingSpinner size="sm" /> : professor ? 'Update Professor' : 'Add Professor'}
+          {loading ? 'Saving...' : professor ? 'Update Professor' : 'Add Professor'}
         </Button>
       </div>
     </form>

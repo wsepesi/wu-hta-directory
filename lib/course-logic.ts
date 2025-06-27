@@ -1,9 +1,8 @@
 import { db } from './db';
 import { courses, courseOfferings, taAssignments } from './db/schema';
-import { eq, and, or, sql, isNull } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 type Season = 'fall' | 'spring' | 'summer';
-type OfferingPattern = 'both' | 'fall' | 'spring' | 'alternating' | 'irregular';
 
 interface PredictedOffering {
   courseId: string;
@@ -58,12 +57,32 @@ export async function predictCourseOfferings(
       (o) => o.courseId === course.id
     );
 
-    let prediction: PredictedOffering | null = null;
+    if (courseHistory.length === 0) {
+      // No history, can't predict
+      continue;
+    }
 
-    // Apply prediction logic based on offering pattern
-    switch (course.offeringPattern) {
-      case 'both':
-        // Offered every semester
+    // Analyze historical patterns
+    const fallOfferings = courseHistory.filter(h => h.season === 'fall').length;
+    const springOfferings = courseHistory.filter(h => h.season === 'spring').length;
+    const totalOfferings = courseHistory.length;
+    
+    // Get the last offering
+    const lastOffering = courseHistory[courseHistory.length - 1];
+    const semestersSinceLastOffering = 
+      (targetYear - lastOffering.year) * 2 + 
+      (targetSeason === 'fall' ? 1 : 0) - 
+      (lastOffering.season === 'fall' ? 1 : 0);
+
+    let prediction: PredictedOffering | null = null;
+    
+    // Determine pattern and make prediction
+    if (totalOfferings >= 4) {
+      const fallRatio = fallOfferings / totalOfferings;
+      const springRatio = springOfferings / totalOfferings;
+      
+      // Offered almost every semester
+      if (fallRatio > 0.8 && springRatio > 0.8) {
         prediction = {
           courseId: course.id,
           courseNumber: course.courseNumber,
@@ -72,85 +91,61 @@ export async function predictCourseOfferings(
           predictedYear: targetYear,
           predictedSeason: targetSeason,
           confidence: 'high',
-          reason: 'Course is offered every semester',
+          reason: 'Course is typically offered every semester',
         };
-        break;
-
-      case 'fall':
-        if (targetSeason === 'fall') {
-          prediction = {
-            courseId: course.id,
-            courseNumber: course.courseNumber,
-            courseName: course.courseName,
-            predictedSemester: `${targetSeason} ${targetYear}`,
-            predictedYear: targetYear,
-            predictedSeason: targetSeason,
-            confidence: 'high',
-            reason: 'Course is only offered in fall',
-          };
-        }
-        break;
-
-      case 'spring':
-        if (targetSeason === 'spring') {
-          prediction = {
-            courseId: course.id,
-            courseNumber: course.courseNumber,
-            courseName: course.courseName,
-            predictedSemester: `${targetSeason} ${targetYear}`,
-            predictedYear: targetYear,
-            predictedSeason: targetSeason,
-            confidence: 'high',
-            reason: 'Course is only offered in spring',
-          };
-        }
-        break;
-
-      case 'alternating':
-        // Analyze historical pattern for alternating courses
-        if (courseHistory.length >= 2) {
-          const lastOffering = courseHistory[courseHistory.length - 1];
-          const semestersSinceLastOffering = 
-            (targetYear - lastOffering.year) * 2 + 
-            (targetSeason === 'fall' ? 1 : 0) - 
-            (lastOffering.season === 'fall' ? 1 : 0);
-
-          if (semestersSinceLastOffering >= 2) {
-            prediction = {
-              courseId: course.id,
-              courseNumber: course.courseNumber,
-              courseName: course.courseName,
-              predictedSemester: `${targetSeason} ${targetYear}`,
-              predictedYear: targetYear,
-              predictedSeason: targetSeason,
-              confidence: 'medium',
-              reason: 'Course alternates semesters and is due',
-            };
-          }
-        }
-        break;
-
-      case 'irregular':
-        // For irregular courses, use statistical analysis
-        if (courseHistory.length >= 3) {
-          const yearsOffered = new Set(courseHistory.map(h => h.year));
-          const offeringRate = yearsOffered.size / 
-            (Math.max(...Array.from(yearsOffered)) - Math.min(...Array.from(yearsOffered)) + 1);
-          
-          if (offeringRate > 0.6) {
-            prediction = {
-              courseId: course.id,
-              courseNumber: course.courseNumber,
-              courseName: course.courseName,
-              predictedSemester: `${targetSeason} ${targetYear}`,
-              predictedYear: targetYear,
-              predictedSeason: targetSeason,
-              confidence: 'low',
-              reason: 'Course has irregular pattern but frequent offerings',
-            };
-          }
-        }
-        break;
+      }
+      // Fall only pattern
+      else if (fallRatio > 0.8 && springRatio < 0.2 && targetSeason === 'fall') {
+        prediction = {
+          courseId: course.id,
+          courseNumber: course.courseNumber,
+          courseName: course.courseName,
+          predictedSemester: `${targetSeason} ${targetYear}`,
+          predictedYear: targetYear,
+          predictedSeason: targetSeason,
+          confidence: 'high',
+          reason: 'Course is typically offered only in fall',
+        };
+      }
+      // Spring only pattern
+      else if (springRatio > 0.8 && fallRatio < 0.2 && targetSeason === 'spring') {
+        prediction = {
+          courseId: course.id,
+          courseNumber: course.courseNumber,
+          courseName: course.courseName,
+          predictedSemester: `${targetSeason} ${targetYear}`,
+          predictedYear: targetYear,
+          predictedSeason: targetSeason,
+          confidence: 'high',
+          reason: 'Course is typically offered only in spring',
+        };
+      }
+      // Alternating pattern
+      else if (semestersSinceLastOffering >= 2) {
+        prediction = {
+          courseId: course.id,
+          courseNumber: course.courseNumber,
+          courseName: course.courseName,
+          predictedSemester: `${targetSeason} ${targetYear}`,
+          predictedYear: targetYear,
+          predictedSeason: targetSeason,
+          confidence: 'medium',
+          reason: 'Course may be offered based on historical frequency',
+        };
+      }
+    }
+    // Limited history, make conservative prediction
+    else if (courseHistory.length >= 2 && semestersSinceLastOffering >= 2) {
+      prediction = {
+        courseId: course.id,
+        courseNumber: course.courseNumber,
+        courseName: course.courseName,
+        predictedSemester: `${targetSeason} ${targetYear}`,
+        predictedYear: targetYear,
+        predictedSeason: targetSeason,
+        confidence: 'low',
+        reason: 'Limited history but may be offered',
+      };
     }
 
     if (prediction) {
@@ -204,32 +199,28 @@ export async function validateCourseOffering(
     errors.push('Course offering already exists for this semester');
   }
 
-  // Validate against course offering pattern
-  const course = await db
-    .select()
-    .from(courses)
-    .where(eq(courses.id, courseId))
-    .limit(1);
+  // Analyze historical offering patterns for warnings
+  const historicalOfferings = await db
+    .select({
+      season: courseOfferings.season,
+    })
+    .from(courseOfferings)
+    .where(eq(courseOfferings.courseId, courseId))
+    .orderBy(courseOfferings.year, courseOfferings.season);
 
-  if (course.length > 0) {
-    const offeringPattern = course[0].offeringPattern as OfferingPattern;
-    
-    switch (offeringPattern) {
-      case 'fall':
-        if (season !== 'fall') {
-          warnings.push('Course is typically only offered in fall');
-        }
-        break;
-      case 'spring':
-        if (season !== 'spring') {
-          warnings.push('Course is typically only offered in spring');
-        }
-        break;
-      case 'summer':
-        if (season !== 'summer') {
-          warnings.push('Course is typically only offered in summer');
-        }
-        break;
+  if (historicalOfferings.length >= 3) {
+    const fallCount = historicalOfferings.filter(o => o.season === 'fall').length;
+    const springCount = historicalOfferings.filter(o => o.season === 'spring').length;
+    const summerCount = historicalOfferings.filter(o => o.season === 'summer').length;
+    const total = historicalOfferings.length;
+
+    // Check if course has a strong seasonal pattern
+    if (fallCount / total > 0.8 && season !== 'fall') {
+      warnings.push('Course is typically only offered in fall');
+    } else if (springCount / total > 0.8 && season !== 'spring') {
+      warnings.push('Course is typically only offered in spring');
+    } else if (summerCount / total > 0.8 && season !== 'summer') {
+      warnings.push('Course is typically only offered in summer');
     }
   }
 

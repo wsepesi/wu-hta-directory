@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { backupDatabase } from '@/scripts/backup-database';
 import { env } from '@/lib/env';
-import { monitoring } from '@/lib/monitoring';
 
 // Verify cron secret to prevent unauthorized access
 function verifyCronSecret(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization');
   
   // In Vercel, cron jobs are automatically authenticated
   // For manual testing, check for a secret
@@ -38,24 +36,11 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    const transactionId = monitoring.startTransaction('cron.backup-database');
     
     try {
       // Run the backup
       const backupPath = await backupDatabase();
       
-      monitoring.captureMessage(
-        'Database backup completed successfully',
-        monitoring.ErrorSeverity.INFO,
-        {
-          extra: {
-            backupPath,
-            environment: env.NODE_ENV,
-          },
-        }
-      );
-      
-      monitoring.finishTransaction(transactionId, 'ok', { backupPath });
       
       return NextResponse.json({
         success: true,
@@ -65,14 +50,10 @@ export async function GET(request: NextRequest) {
       });
       
     } catch (backupError) {
-      monitoring.finishTransaction(transactionId, 'error');
       throw backupError;
     }
     
   } catch (error) {
-    monitoring.captureException(error, {
-      tags: { cron: 'backup-database' },
-    });
     
     return NextResponse.json(
       {

@@ -1,8 +1,8 @@
+import Image from 'next/image';
 import { Card, CardHeader, CardBody, CardFooter } from '../ui/Card';
 import { SerifHeading, BodyText } from '../ui/Typography';
 import { Button } from '../ui/Button';
 import { MissingTAIndicator } from '../course/MissingTAIndicator';
-import { clsx } from 'clsx';
 
 interface Course {
   id: string;
@@ -38,7 +38,6 @@ export function ProfessorCard({
   showActions = true,
   className 
 }: ProfessorCardProps) {
-  const totalCourses = professor.courses.length;
   const coursesNeedingTAs = professor.courses.filter(
     course => course.currentTAs < course.requiredTAs
   ).length;
@@ -48,9 +47,11 @@ export function ProfessorCard({
       <CardHeader>
         <div className="flex items-start gap-4">
           {professor.imageUrl ? (
-            <img
+            <Image
               src={professor.imageUrl}
               alt={professor.name}
+              width={80}
+              height={80}
               className="w-20 h-20 rounded-full object-cover"
             />
           ) : (

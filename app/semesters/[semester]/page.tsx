@@ -4,18 +4,21 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { courseOfferings, courses, professors, taAssignments, users } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
-import { MissingTAIndicator } from "@/components/course/MissingTAIndicator";
+import CleanLayout, { CleanPageHeader } from "@/components/layout/CleanLayout";
+import { UnclaimedTAMarker } from "@/components/ta/UnclaimedTAMarker";
+import { isSemesterCurrent, isSemesterFuture, parseSemester } from "@/lib/semester-utils";
 
 interface PageProps {
-  params: {
+  params: Promise<{
     semester: string;
-  };
+  }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const resolvedParams = await params;
   return {
-    title: `${params.semester} - WU Head TA Directory`,
-    description: `Head TAs and courses for ${params.semester}`,
+    title: `${resolvedParams.semester} - WU Head TA Directory`,
+    description: `Head TAs and courses for ${resolvedParams.semester}`,
   };
 }
 
@@ -69,8 +72,19 @@ async function getSemesterData(semester: string) {
   };
 }
 
+// Helper function to check if a semester is active (current or future)
+function isActiveSemester(season: string, year: number): boolean {
+  try {
+    const semester = parseSemester(`${season} ${year}`);
+    return isSemesterCurrent(semester) || isSemesterFuture(semester);
+  } catch {
+    return false;
+  }
+}
+
 export default async function SemesterDetailPage({ params }: PageProps) {
-  const semesterData = await getSemesterData(params.semester);
+  const resolvedParams = await params;
+  const semesterData = await getSemesterData(resolvedParams.semester);
 
   if (!semesterData) {
     notFound();
@@ -82,115 +96,113 @@ export default async function SemesterDetailPage({ params }: PageProps) {
   const coursesNeedingTAs = totalCourses - coursesWithTAs;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <Link
-            href="/semesters"
-            className="text-sm text-indigo-600 hover:text-indigo-500 flex items-center"
+    <CleanLayout maxWidth="6xl">
+      <div className="mb-12">
+        <Link
+          href="/semesters"
+          className="font-serif text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200 inline-flex items-center"
+        >
+          <svg
+            className="mr-2 h-3 w-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg
-              className="mr-1 h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          All Semesters
+        </Link>
+      </div>
+      
+      <CleanPageHeader
+        title={`${semesterData.season} ${semesterData.year}`}
+        subtitle={`${semesterData.offerings.length} courses offered this semester`}
+      />
+
+      {/* Summary Statistics */}
+      <div className="mb-16 pb-8 border-b border-charcoal/10">
+        <div className="grid grid-cols-3 gap-8 text-center">
+          <div className="font-serif">
+            <p className="text-4xl text-charcoal">{totalCourses}</p>
+            <p className="text-sm uppercase tracking-wider text-charcoal/60 mt-2">Total Courses</p>
+          </div>
+          <div className="font-serif">
+            <p className="text-4xl text-charcoal">{coursesWithTAs}</p>
+            <p className="text-sm uppercase tracking-wider text-charcoal/60 mt-2">With TAs</p>
+          </div>
+          <div className="font-serif">
+            <p className="text-4xl text-charcoal">{coursesNeedingTAs}</p>
+            <p className="text-sm uppercase tracking-wider text-charcoal/60 mt-2">Need TAs</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Course Listings */}
+      <div className="space-y-0">
+        {semesterData.offerings.map((offering) => {
+          const requiredTAs = 1; // This could be configurable per course
+          const currentTAs = offering.tas.length;
+          
+          return (
+            <div 
+              key={offering.offering.id} 
+              className="border-b border-charcoal/10 py-6 sm:py-8 hover:opacity-80 transition-opacity duration-200"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Back to semesters
-          </Link>
-          <h1 className="mt-4 text-3xl font-extrabold text-gray-900">
-            {semesterData.season} {semesterData.year}
-          </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            {semesterData.offerings.length} courses offered this semester
-          </p>
-        </div>
-
-        {/* Summary Statistics */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <p className="text-sm text-gray-500">Total Courses</p>
-            <p className="text-2xl font-bold text-gray-900">{totalCourses}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <p className="text-sm text-gray-500">Courses with TAs</p>
-            <p className="text-2xl font-bold text-green-600">{coursesWithTAs}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <p className="text-sm text-gray-500">Courses Needing TAs</p>
-            <p className="text-2xl font-bold text-red-600">{coursesNeedingTAs}</p>
-          </div>
-        </div>
-
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="divide-y divide-gray-200">
-            {semesterData.offerings.map((offering) => {
-              const requiredTAs = 1; // This could be configurable per course
-              const currentTAs = offering.tas.length;
-              
-              return (
-                <div key={offering.offering.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-4">
-                        <Link
-                          href={`/courses/${offering.course.courseNumber}`}
-                          className="text-lg font-medium text-indigo-600 hover:text-indigo-500"
-                        >
-                          {offering.course.courseNumber}: {offering.course.courseName}
-                        </Link>
-                        {currentTAs === 0 && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            No TA assigned
-                          </span>
-                        )}
-                      </div>
-                      {offering.professor && (
-                        <p className="mt-1 text-sm text-gray-600">
-                          Professor:{" "}
-                          <Link
-                            href={`/professors/${offering.professor.id}`}
-                            className="text-indigo-600 hover:text-indigo-500"
-                          >
-                            {offering.professor.firstName} {offering.professor.lastName}
-                          </Link>
-                        </p>
-                      )}
-                      {!offering.professor && (
-                        <p className="mt-1 text-sm text-yellow-600">
-                          No professor assigned
-                        </p>
-                      )}
-                    </div>
-                    <div className="ml-4 w-32">
-                      <MissingTAIndicator
-                        currentTAs={currentTAs}
-                        requiredTAs={requiredTAs}
-                        size="md"
-                      />
-                    </div>
-                  </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 sm:gap-8">
+                {/* Course Number - Full width on mobile */}
+                <div className="sm:col-span-2">
+                  <Link
+                    href={`/courses/${offering.course.courseNumber}`}
+                    className="font-serif text-base sm:text-lg text-charcoal hover:opacity-70 transition-opacity duration-200 inline-block"
+                  >
+                    {offering.course.courseNumber}
+                  </Link>
+                </div>
+                
+                {/* Course Details */}
+                <div className="sm:col-span-7">
+                  <h3 className="font-serif text-base sm:text-lg text-charcoal mb-2">
+                    {offering.course.courseName}
+                  </h3>
+                  
+                  {offering.professor && (
+                    <p className="font-serif text-xs sm:text-sm text-charcoal/60">
+                      Taught by{" "}
+                      <Link
+                        href={`/professors/${offering.professor.id}`}
+                        className="text-charcoal underline hover:no-underline"
+                      >
+                        {offering.professor.firstName} {offering.professor.lastName}
+                      </Link>
+                    </p>
+                  )}
+                  {!offering.professor && (
+                    <p className="font-serif text-xs sm:text-sm italic text-charcoal/40">
+                      No professor assigned
+                    </p>
+                  )}
+                  
                   {offering.tas.length > 0 && (
-                    <div className="mt-4">
-                      <h3 className="text-sm font-medium text-gray-900">Head TAs:</h3>
-                      <div className="mt-2 flex flex-wrap gap-2">
+                    <div className="mt-3 sm:mt-4">
+                      <p className="font-serif text-xs sm:text-sm uppercase tracking-wider text-charcoal/60 mb-1 sm:mb-2">
+                        Head Teaching Assistants
+                      </p>
+                      <div className="flex flex-wrap gap-2 sm:gap-4">
                         {offering.tas.map((ta) => (
                           <Link
                             key={ta.assignment.id}
-                            href={`/people/${ta.user.id}`}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 hover:bg-indigo-200"
+                            href={`/profile/${ta.user.id}`}
+                            className="font-serif text-xs sm:text-sm text-charcoal underline hover:no-underline"
                           >
                             {ta.user.firstName} {ta.user.lastName}
                             {ta.assignment.hoursPerWeek && (
-                              <span className="ml-1 text-xs text-indigo-600">
-                                ({ta.assignment.hoursPerWeek}h/week)
+                              <span className="text-charcoal/60 ml-1">
+                                ({ta.assignment.hoursPerWeek}h)
                               </span>
                             )}
                           </Link>
@@ -199,11 +211,32 @@ export default async function SemesterDetailPage({ params }: PageProps) {
                     </div>
                   )}
                 </div>
-              );
-            })}
-          </div>
-        </div>
+                
+                {/* TA Status - Below content on mobile */}
+                <div className="sm:col-span-3 mt-3 sm:mt-0 sm:text-right">
+                  {currentTAs === 0 ? (
+                    isActiveSemester(semesterData.season, semesterData.year) ? (
+                      <UnclaimedTAMarker 
+                        courseId={offering.course.id}
+                        semesterId={offering.offering.id}
+                        className="font-serif text-xs sm:text-sm"
+                      />
+                    ) : (
+                      <span className="font-serif text-xs sm:text-sm italic text-charcoal/60">
+                        No Head TA Recorded
+                      </span>
+                    )
+                  ) : (
+                    <span className="font-serif text-xs sm:text-sm text-charcoal/60">
+                      {currentTAs} of {requiredTAs} TA{requiredTAs > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </div>
+    </CleanLayout>
   );
 }

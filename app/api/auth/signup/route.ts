@@ -3,6 +3,7 @@ import { invitationRepository } from '@/lib/repositories/invitations';
 import { userRepository } from '@/lib/repositories/users';
 import { sendWelcomeEmail, isEmailConfigured } from '@/lib/email-service';
 import { validatePassword } from '@/lib/password-utils';
+import { authLogger } from '@/lib/logger';
 import type { ApiResponse, User } from '@/lib/types';
 
 /**
@@ -10,12 +11,14 @@ import type { ApiResponse, User } from '@/lib/types';
  * Complete signup with invitation token
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  let email: string | undefined;
+  
   try {
     // Parse request body
     const body = await request.json();
     const { 
       token,
-      email,
       password,
       firstName,
       lastName,
@@ -26,6 +29,17 @@ export async function POST(request: NextRequest) {
       personalSite,
       location
     } = body;
+    
+    email = body.email;
+
+    // Log signup attempt
+    authLogger.info('Signup attempt', {
+      email: email?.toLowerCase(),
+      hasToken: !!token,
+      firstName,
+      lastName,
+      gradYear
+    });
 
     // Validate required fields
     const missingFields = [];
@@ -36,6 +50,11 @@ export async function POST(request: NextRequest) {
     if (!lastName) missingFields.push('last name');
     
     if (missingFields.length > 0) {
+      authLogger.warn('Signup failed: missing fields', {
+        email: email?.toLowerCase(),
+        missingFields,
+        duration: Date.now() - startTime
+      });
       return NextResponse.json(
         { 
           error: `Missing required fields: ${missingFields.join(', ')}`,
@@ -47,7 +66,11 @@ export async function POST(request: NextRequest) {
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!email || !emailRegex.test(email)) {
+      authLogger.warn('Signup failed: invalid email format', {
+        email,
+        duration: Date.now() - startTime
+      });
       return NextResponse.json(
         { error: 'Please provide a valid email address' } as ApiResponse<never>,
         { status: 400 }
@@ -57,6 +80,11 @@ export async function POST(request: NextRequest) {
     // Validate password strength
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.isValid) {
+      authLogger.warn('Signup failed: weak password', {
+        email: email.toLowerCase(),
+        errors: passwordValidation.errors,
+        duration: Date.now() - startTime
+      });
       return NextResponse.json(
         { 
           error: 'Password does not meet security requirements',
@@ -69,6 +97,11 @@ export async function POST(request: NextRequest) {
     // Validate invitation token
     const invitation = await invitationRepository.findValidByToken(token);
     if (!invitation) {
+      authLogger.warn('Signup failed: invalid token', {
+        email: email.toLowerCase(),
+        token: token.substring(0, 8) + '...',
+        duration: Date.now() - startTime
+      });
       return NextResponse.json(
         { 
           error: 'Invalid or expired invitation token. Please request a new invitation.',
@@ -80,6 +113,11 @@ export async function POST(request: NextRequest) {
 
     // Check if email matches invitation
     if (invitation.email.toLowerCase() !== email.toLowerCase()) {
+      authLogger.warn('Signup failed: email mismatch', {
+        providedEmail: email.toLowerCase(),
+        invitationEmail: invitation.email.toLowerCase(),
+        duration: Date.now() - startTime
+      });
       return NextResponse.json(
         { 
           error: `This invitation is for ${invitation.email}. Please use the correct email address or request a new invitation.`,
@@ -92,6 +130,10 @@ export async function POST(request: NextRequest) {
     // Check if user already exists
     const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
+      authLogger.warn('Signup failed: user exists', {
+        email: email.toLowerCase(),
+        duration: Date.now() - startTime
+      });
       return NextResponse.json(
         { 
           error: 'An account already exists with this email address. Please sign in instead.',
@@ -102,6 +144,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user
+    authLogger.info('Creating new user', {
+      email: email.toLowerCase(),
+      invitedBy: invitation.invitedBy,
+      invitationId: invitation.id
+    });
+    
     const user = await userRepository.create({
       email,
       password,
@@ -119,6 +167,13 @@ export async function POST(request: NextRequest) {
 
     // Mark invitation as used
     await invitationRepository.markAsUsed(invitation.id);
+    
+    authLogger.info('Signup successful', {
+      userId: user.id,
+      email: user.email,
+      invitedBy: invitation.invitedBy,
+      duration: Date.now() - startTime
+    });
 
     // Send welcome email if email service is configured
     if (isEmailConfigured()) {
@@ -129,8 +184,16 @@ export async function POST(request: NextRequest) {
       });
 
       if (!emailResult.success) {
-        console.error('Failed to send welcome email:', emailResult.error);
+        authLogger.error('Failed to send welcome email', emailResult.error, {
+          userId: user.id,
+          email: user.email
+        });
         // Don't fail the whole request if email fails, but log it
+      } else {
+        authLogger.info('Welcome email sent', {
+          userId: user.id,
+          email: user.email
+        });
       }
     }
 
@@ -143,7 +206,10 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error during signup:', error);
+    authLogger.error('Signup error', error, {
+      email: email?.toLowerCase(),
+      duration: Date.now() - startTime
+    });
     return NextResponse.json(
       { error: 'Failed to create account' } as ApiResponse<never>,
       { status: 500 }

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { CoursePredictionsSkeleton } from './CourseSkeletons';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import Link from 'next/link';
 
@@ -28,11 +28,7 @@ export function CoursePredictions() {
   const years = [currentYear, currentYear + 1, currentYear + 2];
   const seasons = ['Spring', 'Summer', 'Fall'];
 
-  useEffect(() => {
-    loadPredictions();
-  }, [selectedYear, selectedSeason]);
-
-  const loadPredictions = async () => {
+  const loadPredictions = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -47,12 +43,16 @@ export function CoursePredictions() {
 
       const data = await response.json();
       setPredictions(data.predictions);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load predictions');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load predictions');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedYear, selectedSeason]);
+
+  useEffect(() => {
+    loadPredictions();
+  }, [loadPredictions]);
 
   const getConfidenceColor = (confidence: string) => {
     switch (confidence) {
@@ -88,8 +88,8 @@ export function CoursePredictions() {
 
       // Reload predictions
       await loadPredictions();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create offering');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create offering');
     }
   };
 
@@ -131,9 +131,7 @@ export function CoursePredictions() {
         {error && <ErrorMessage message={error} className="mb-4" />}
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <LoadingSpinner />
-          </div>
+          <CoursePredictionsSkeleton />
         ) : predictions.length === 0 ? (
           <p className="text-gray-500 text-center py-8">
             No predictions available for this semester

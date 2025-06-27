@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { userRepository } from '@/lib/repositories/users';
 import { courseRepository } from '@/lib/repositories/courses';
 import { professorRepository } from '@/lib/repositories/professors';
+import { getPublicDirectory } from '@/lib/public-directory';
 import type { ApiResponse, User, Course, Professor } from '@/lib/types';
 
 interface SearchResults {
@@ -20,12 +21,6 @@ export async function GET(request: NextRequest) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' } as ApiResponse<never>,
-        { status: 401 }
-      );
-    }
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -47,14 +42,38 @@ export async function GET(request: NextRequest) {
 
     // Perform searches based on type parameter
     if (!type || type === 'all' || type === 'users') {
-      results.users = await userRepository.search(query);
+      if (session?.user) {
+        // Authenticated users can search all users
+        results.users = await userRepository.search(query);
+      } else {
+        // Unauthenticated users get public directory results
+        const profiles = await getPublicDirectory({ search: query, limit: 10 });
+        results.users = profiles.map(profile => ({
+          id: profile.id,
+          email: '', // Don't expose email publicly
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          gradYear: profile.gradYear,
+          degreeProgram: undefined,
+          currentRole: profile.currentRole,
+          linkedinUrl: undefined,
+          personalSite: undefined,
+          location: profile.location,
+          role: 'head_ta' as const,
+          invitedBy: undefined,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }));
+      }
     }
 
     if (!type || type === 'all' || type === 'courses') {
+      // Courses are public
       results.courses = await courseRepository.search(query);
     }
 
     if (!type || type === 'all' || type === 'professors') {
+      // Professors are public
       results.professors = await professorRepository.search(query);
     }
 

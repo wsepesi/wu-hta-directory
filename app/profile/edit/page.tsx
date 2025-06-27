@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@/hooks/useUsers";
 import { UpdateUserInput } from "@/lib/types";
-import { showToast } from "@/components/ui/Toast";
 import ProfileImageUpload from "@/components/profile/ProfileImageUpload";
+import PrivacySettings from "@/components/profile/PrivacySettings";
+import { ProfileEditSkeleton } from "@/components/profile/ProfileSkeleton";
 
 export default function EditProfilePage() {
   const { data: session, status } = useSession();
@@ -27,6 +28,16 @@ export default function EditProfilePage() {
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [privacySettings, setPrivacySettings] = useState({
+    showEmail: false,
+    showGradYear: true,
+    showLocation: true,
+    showLinkedIn: true,
+    showPersonalSite: true,
+    showCourses: true,
+    appearInDirectory: true,
+    allowContact: true,
+  });
 
   // Initialize form data when user loads
   useEffect(() => {
@@ -44,16 +55,26 @@ export default function EditProfilePage() {
     }
   }, [user]);
 
+  // Fetch privacy settings
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetch(`/api/users/${session.user.id}/privacy`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) {
+            setPrivacySettings(data);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [session?.user?.id]);
+
   if (status === "loading" || isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
-      </div>
-    );
+    return <ProfileEditSkeleton />;
   }
 
   if (!session) {
-    router.push("/auth/login");
+    router.push("/auth/signin?callbackUrl=/profile/edit");
     return null;
   }
 
@@ -135,7 +156,6 @@ export default function EditProfilePage() {
             <div className="mb-8 pb-8 border-b border-gray-200">
               <ProfileImageUpload
                 userId={session.user.id}
-                currentImageUrl={user?.profileImageUrl}
               />
             </div>
             
@@ -361,6 +381,19 @@ export default function EditProfilePage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+
+        {/* Privacy Settings Section */}
+        <div className="mt-8 bg-white shadow sm:rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">
+              Privacy Settings
+            </h2>
+            <PrivacySettings
+              userId={session.user.id}
+              initialSettings={privacySettings}
+            />
           </div>
         </div>
 

@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { showToast } from "@/components/ui/Toast";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
+import { ProgressiveForm } from "@/components/auth/ProgressiveForm";
 
 export default function ChangePasswordPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -21,6 +23,20 @@ export default function ChangePasswordPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generalError, setGeneralError] = useState("");
+  
+  // Handle server-side errors from progressive enhancement
+  useEffect(() => {
+    const serverError = searchParams.get('error');
+    const errorField = searchParams.get('field');
+    
+    if (serverError) {
+      if (errorField) {
+        setErrors({ [errorField]: serverError });
+      } else {
+        setGeneralError(serverError);
+      }
+    }
+  }, [searchParams]);
 
   // Password requirements
   const PASSWORD_REQUIREMENTS = [
@@ -34,7 +50,10 @@ export default function ChangePasswordPage() {
   if (status === "loading") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingSpinner size="md" />
+        <div className="w-full max-w-md space-y-4">
+          <Skeleton variant="text" className="h-8 w-48 mx-auto" />
+          <Skeleton variant="rectangular" height={300} className="w-full" />
+        </div>
       </div>
     );
   }
@@ -97,7 +116,7 @@ export default function ChangePasswordPage() {
       const data = await response.json();
 
       if (response.ok) {
-        showToast("Password changed successfully!", "success");
+        showToast("success", "Password changed successfully!");
         router.push("/profile");
       } else {
         if (data.error?.toLowerCase().includes("incorrect")) {
@@ -144,7 +163,12 @@ export default function ChangePasswordPage() {
             </ErrorMessage>
           )}
           
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <ProgressiveForm 
+            className="space-y-6" 
+            action="/api/auth/change-password-action"
+            method="POST"
+            enhancedOnSubmit={handleSubmit}
+          >
             <div>
               <label
                 htmlFor="currentPassword"
@@ -159,6 +183,8 @@ export default function ChangePasswordPage() {
                   type="password"
                   autoComplete="current-password"
                   required
+                  minLength={8}
+                  title="Please enter your current password"
                   value={formData.currentPassword}
                   onChange={handleChange}
                   className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
@@ -189,6 +215,9 @@ export default function ChangePasswordPage() {
                   type="password"
                   autoComplete="new-password"
                   required
+                  minLength={8}
+                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}"
+                  title="Password must be at least 8 characters with uppercase, lowercase, number, and special character"
                   value={formData.newPassword}
                   onChange={handleChange}
                   className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
@@ -239,6 +268,8 @@ export default function ChangePasswordPage() {
                   type="password"
                   autoComplete="new-password"
                   required
+                  minLength={8}
+                  title="Please confirm your new password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
@@ -267,14 +298,10 @@ export default function ChangePasswordPage() {
                 disabled={isSubmitting}
                 className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? (
-                  <LoadingSpinner size="sm" className="mx-auto" />
-                ) : (
-                  "Change Password"
-                )}
+                {isSubmitting ? "Changing password..." : "Change Password"}
               </button>
             </div>
-          </form>
+          </ProgressiveForm>
 
         </div>
       </div>

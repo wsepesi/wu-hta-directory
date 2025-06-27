@@ -5,7 +5,7 @@
 /**
  * Debounce function to limit how often a function can be called
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -25,7 +25,7 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * Throttle function to ensure a function is called at most once per interval
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
@@ -33,7 +33,7 @@ export function throttle<T extends (...args: any[]) => any>(
   
   return function executedFunction(...args: Parameters<T>) {
     if (!inThrottle) {
-      func.apply(this, args);
+      func(...args);
       inThrottle = true;
       setTimeout(() => inThrottle = false, limit);
     }
@@ -117,16 +117,16 @@ export function generateId(prefix?: string): string {
  */
 export function deepClone<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') return obj;
-  if (obj instanceof Date) return new Date(obj.getTime()) as any;
-  if (obj instanceof Array) return obj.map(item => deepClone(item)) as any;
+  if (obj instanceof Date) return new Date(obj.getTime()) as T;
+  if (obj instanceof Array) return obj.map(item => deepClone(item)) as T;
   if (obj instanceof Object) {
-    const clonedObj: any = {};
+    const clonedObj: Record<string, unknown> = {};
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
-        clonedObj[key] = deepClone(obj[key]);
+        clonedObj[key] = deepClone((obj as Record<string, unknown>)[key]);
       }
     }
-    return clonedObj;
+    return clonedObj as T;
   }
   return obj;
 }

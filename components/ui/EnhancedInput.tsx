@@ -35,19 +35,19 @@ export const EnhancedInput = forwardRef<HTMLInputElement, InputProps>(
     const isPassword = type === 'password';
     const inputType = isPassword && showPassword ? 'text' : type;
 
-    const baseStyles = 'block w-full rounded-md border-gray-300 transition-colors duration-200 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm';
-    const errorStyles = 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500';
-    const disabledStyles = 'bg-gray-50 text-gray-500 cursor-not-allowed';
+    const baseStyles = 'block w-full border-b transition-opacity duration-200 focus:outline-none focus:border-charcoal bg-transparent font-serif text-charcoal';
+    const errorStyles = 'border-red-600 text-red-900 placeholder-red-300';
+    const disabledStyles = 'opacity-50 text-charcoal/50 cursor-not-allowed';
     const iconPaddingStyles = {
-      left: 'pl-10',
-      right: 'pr-10',
+      left: 'pl-8',
+      right: 'pr-8',
     };
 
     const PasswordToggle = () => (
       <button
         type="button"
         onClick={() => setShowPassword(!showPassword)}
-        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+        className="absolute inset-y-0 right-0 flex items-center pr-2 text-charcoal/40 hover:text-charcoal/60"
         aria-label={showPassword ? 'Hide password' : 'Show password'}
       >
         {showPassword ? (
@@ -67,7 +67,7 @@ export const EnhancedInput = forwardRef<HTMLInputElement, InputProps>(
       <button
         type="button"
         onClick={onClear}
-        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+        className="absolute inset-y-0 right-0 flex items-center pr-2 text-charcoal/40 hover:text-charcoal/60"
         aria-label="Clear input"
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -79,14 +79,14 @@ export const EnhancedInput = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={containerClassName}>
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor={inputId} className="block text-sm font-serif text-charcoal mb-1">
             {label}
-            {required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
+            {required && <span className="text-red-600 ml-1" aria-label="required">*</span>}
           </label>
         )}
         <div className="relative">
           {icon && iconPosition === 'left' && (
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-charcoal/40">
               {icon}
             </div>
           )}
@@ -99,8 +99,9 @@ export const EnhancedInput = forwardRef<HTMLInputElement, InputProps>(
               error && errorStyles,
               disabled && disabledStyles,
               icon && iconPaddingStyles[iconPosition],
-              isPassword && 'pr-10',
-              clearable && !isPassword && 'pr-10',
+              isPassword && 'pr-8',
+              clearable && !isPassword && 'pr-8',
+              'border-charcoal/30',
               className
             )}
             disabled={disabled}
@@ -112,7 +113,7 @@ export const EnhancedInput = forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {icon && iconPosition === 'right' && !isPassword && !clearable && (
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none text-charcoal/40">
               {icon}
             </div>
           )}
@@ -120,7 +121,7 @@ export const EnhancedInput = forwardRef<HTMLInputElement, InputProps>(
           {clearable && !isPassword && props.value && <ClearButton />}
         </div>
         {hint && !error && (
-          <p className="mt-1 text-sm text-gray-500" id={`${inputId}-hint`}>
+          <p className="mt-1 text-sm text-charcoal/60" id={`${inputId}-hint`}>
             {hint}
           </p>
         )}

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { z } from 'zod';
-import { debounce } from '@/lib/utils';
+// Remove conflicting import
 
 interface UseFormValidationOptions<T> {
   schema: z.ZodSchema<T>;
@@ -70,7 +70,9 @@ export function useFormValidation<T extends Record<string, any>>({
         if (fieldName) {
           // Validate single field
           const fieldValue = values[fieldName];
-          const fieldSchema = schema.shape[fieldName as string];
+          // For individual field validation, we'll validate the entire object
+          // and extract the specific field error
+          const fieldSchema = (schema as any)._def?.shape?.[fieldName as string];
           
           if (fieldSchema) {
             try {
@@ -132,7 +134,9 @@ export function useFormValidation<T extends Record<string, any>>({
     
     try {
       const fieldValue = values[name];
-      const fieldSchema = schema.shape[name as string];
+      // For individual field validation, we'll validate the entire object
+      // and extract the specific field error
+      const fieldSchema = (schema as any)._def?.shape?.[name as string];
       
       if (fieldSchema) {
         try {
@@ -219,7 +223,7 @@ export function useFormValidation<T extends Record<string, any>>({
       e.preventDefault();
       
       // Touch all fields
-      const allTouched = Object.keys(schema.shape).reduce((acc, key) => ({
+      const allTouched = Object.keys((schema as any)._def?.shape || {}).reduce((acc, key) => ({
         ...acc,
         [key]: true,
       }), {} as Record<keyof T, boolean>);

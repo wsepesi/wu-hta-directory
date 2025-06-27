@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { LoadingSpinner } from "../ui/LoadingSpinner";
+import { useState, useEffect, useRef } from "react";
+import { Skeleton } from "../ui/Skeleton";
 import { debounce } from "lodash";
 
 interface SearchResult {
@@ -24,7 +23,6 @@ export function SearchWithHighlight({
   className = "",
   onResultClick
 }: SearchWithHighlightProps) {
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,70 +32,70 @@ export function SearchWithHighlight({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce(async (searchQuery: string) => {
-      if (searchQuery.length < 2) {
-        setResults([]);
-        return;
-      }
+  const debouncedSearch = debounce(async (searchQuery: string) => {
+    if (searchQuery.length < 2) {
+      setResults([]);
+      return;
+    }
 
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
-        if (!response.ok) throw new Error("Search failed");
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      if (!response.ok) throw new Error("Search failed");
 
-        const data = await response.json();
-        const searchResults: SearchResult[] = [];
+      const data = await response.json();
+      const searchResults: SearchResult[] = [];
 
-        // Transform and combine results
-        if (data.data) {
-          if (data.data.users) {
-            data.data.users.forEach((user: any) => {
-              searchResults.push({
-                id: user.id,
-                type: "ta",
-                title: `${user.firstName} ${user.lastName}`,
-                subtitle: user.gradYear ? `Class of ${user.gradYear}` : user.email,
-                url: `/people/${user.id}`,
-              });
+      // Transform and combine results
+      if (data.data) {
+        if (data.data.users) {
+          data.data.users.forEach((user: unknown) => {
+            const typedUser = user as { id: string; firstName: string; lastName: string; gradYear?: number; email: string };
+            searchResults.push({
+              id: typedUser.id,
+              type: "ta",
+              title: `${typedUser.firstName} ${typedUser.lastName}`,
+              subtitle: typedUser.gradYear ? `Class of ${typedUser.gradYear}` : typedUser.email,
+              url: `/profile/${typedUser.id}`,
             });
-          }
-
-          if (data.data.courses) {
-            data.data.courses.forEach((course: any) => {
-              searchResults.push({
-                id: course.id,
-                type: "course",
-                title: `${course.courseNumber}: ${course.courseName}`,
-                subtitle: course.offeringPattern?.replace("_", " ").replace(/\b\w/g, (l: string) => l.toUpperCase()),
-                url: `/courses/${course.courseNumber}`,
-              });
-            });
-          }
-
-          if (data.data.professors) {
-            data.data.professors.forEach((professor: any) => {
-              searchResults.push({
-                id: professor.id,
-                type: "professor",
-                title: `${professor.firstName} ${professor.lastName}`,
-                subtitle: professor.email || "Professor",
-                url: `/professors/${professor.id}`,
-              });
-            });
-          }
+          });
         }
 
-        setResults(searchResults.slice(0, 8)); // Limit to 8 results
-      } catch (error) {
-        console.error("Search error:", error);
-        setResults([]);
-      } finally {
-        setLoading(false);
+        if (data.data.courses) {
+          data.data.courses.forEach((course: unknown) => {
+            const typedCourse = course as { id: string; courseNumber: string; courseName: string };
+            searchResults.push({
+              id: typedCourse.id,
+              type: "course",
+              title: `${typedCourse.courseNumber}: ${typedCourse.courseName}`,
+              subtitle: undefined,
+              url: `/courses/${typedCourse.courseNumber}`,
+            });
+          });
+        }
+
+        if (data.data.professors) {
+          data.data.professors.forEach((professor: unknown) => {
+            const typedProfessor = professor as { id: string; firstName: string; lastName: string; email?: string };
+            searchResults.push({
+              id: typedProfessor.id,
+              type: "professor",
+              title: `${typedProfessor.firstName} ${typedProfessor.lastName}`,
+              subtitle: typedProfessor.email || "Professor",
+              url: `/professors/${typedProfessor.id}`,
+            });
+          });
+        }
       }
-    }, 300),
-    []
-  );
+
+      setResults(searchResults.slice(0, 8)); // Limit to 8 results
+    } catch (error) {
+      console.error("Search error:", error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, 300);
 
   // Handle search input change
   const handleSearchChange = (value: string) => {
@@ -143,7 +141,7 @@ export function SearchWithHighlight({
     if (onResultClick) {
       onResultClick(result);
     } else {
-      router.push(result.url);
+      window.location.href = result.url;
     }
     setQuery("");
     setResults([]);
@@ -224,7 +222,12 @@ export function SearchWithHighlight({
         </div>
         {loading && (
           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-            <LoadingSpinner size="sm" />
+            <div className="w-5 h-5">
+              <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
           </div>
         )}
       </div>
@@ -233,9 +236,17 @@ export function SearchWithHighlight({
       {showResults && (results.length > 0 || loading) && (
         <div className="absolute z-50 w-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto">
           {loading && results.length === 0 ? (
-            <div className="px-4 py-8 text-center">
-              <LoadingSpinner size="md" />
-              <p className="mt-2 text-sm text-gray-500">Searching...</p>
+            <div className="py-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="px-4 py-3 flex items-start">
+                  <Skeleton variant="circular" width={16} height={16} className="mr-3 mt-0.5" />
+                  <div className="flex-1">
+                    <Skeleton variant="text" width="70%" className="h-4 mb-1" />
+                    <Skeleton variant="text" width="40%" className="h-3" />
+                  </div>
+                  <Skeleton variant="rectangular" width={40} height={16} className="rounded ml-2" />
+                </div>
+              ))}
             </div>
           ) : (
             <ul className="py-2">

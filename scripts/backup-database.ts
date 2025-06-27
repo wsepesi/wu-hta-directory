@@ -1,10 +1,13 @@
 #!/usr/bin/env node
-import { sql } from '@vercel/postgres';
-import fs from 'fs/promises';
-import path from 'path';
-import { env } from '../lib/env';
+import { createClient } from '@vercel/postgres';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { env } from '../lib/env-validation';
 
 const BACKUP_DIR = path.join(process.cwd(), 'backups');
+
+// Create pooled client
+const client = createClient();
 
 // ANSI color codes
 const colors = {
@@ -28,9 +31,13 @@ async function ensureBackupDirectory() {
   }
 }
 
-async function getTableData(tableName: string) {
-  const result = await sql.query(`SELECT * FROM ${tableName}`);
-  return result.rows;
+interface TableRow {
+  [key: string]: unknown;
+}
+
+async function getTableData(tableName: string): Promise<TableRow[]> {
+  const result = await client.query(`SELECT * FROM ${tableName}`);
+  return result.rows as TableRow[];
 }
 
 async function backupDatabase() {
@@ -41,7 +48,7 @@ async function backupDatabase() {
     await ensureBackupDirectory();
     
     // Get all tables
-    const tablesResult = await sql`
+    const tablesResult = await client.sql`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public' 
@@ -49,7 +56,7 @@ async function backupDatabase() {
       ORDER BY table_name
     `;
     
-    const tables = tablesResult.rows.map(row => row.table_name);
+    const tables = tablesResult.rows.map((row) => (row as { table_name: string }).table_name);
     log(`Found ${tables.length} tables to backup`, 'yellow');
     
     // Create backup data structure
@@ -58,7 +65,7 @@ async function backupDatabase() {
       timestamp: new Date().toISOString(),
       environment: env.NODE_ENV,
       database: env.POSTGRES_DATABASE || 'default',
-      tables: {} as Record<string, any[]>,
+      tables: {} as Record<string, TableRow[]>,
     };
     
     // Backup each table
@@ -140,15 +147,16 @@ async function restoreDatabase(backupFile: string) {
       log('\n⚠️  WARNING: You are about to restore a production database!', 'red');
       log('This will DELETE all existing data. Type "CONFIRM" to proceed:', 'red');
       
-      const readline = require('readline').createInterface({
+      const readline = await import('readline');
+      const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
       });
       
       const answer = await new Promise<string>(resolve => {
-        readline.question('> ', resolve);
+        rl.question('> ', resolve);
       });
-      readline.close();
+      rl.close();
       
       if (answer !== 'CONFIRM') {
         log('Restore cancelled.', 'yellow');
@@ -157,40 +165,41 @@ async function restoreDatabase(backupFile: string) {
     }
     
     // Disable foreign key checks
-    await sql`SET session_replication_role = 'replica'`;
+    await client.sql`SET session_replication_role = 'replica'`;
     
     // Clear existing data
     for (const table of Object.keys(backupData.tables).reverse()) {
       log(`Clearing table: ${table}...`, 'yellow');
-      await sql.query(`TRUNCATE TABLE ${table} CASCADE`);
+      await client.query(`TRUNCATE TABLE ${table} CASCADE`);
     }
     
     // Restore data
     for (const [table, rows] of Object.entries(backupData.tables)) {
-      if (rows.length === 0) continue;
+      const tableRows = rows as TableRow[];
+      if (tableRows.length === 0) continue;
       
-      log(`Restoring ${rows.length} rows to ${table}...`, 'yellow');
+      log(`Restoring ${tableRows.length} rows to ${table}...`, 'yellow');
       
       // Build insert query
-      const columns = Object.keys(rows[0]);
-      const values = rows.map(row => 
+      const columns = Object.keys(tableRows[0]);
+      const values = tableRows.map((row: TableRow) => 
         `(${columns.map(col => {
           const value = row[col];
           if (value === null) return 'NULL';
           if (typeof value === 'string') return `'${value.replace(/'/g, "''")}'`;
           if (value instanceof Date) return `'${value.toISOString()}'`;
-          return value;
+          return String(value);
         }).join(', ')})`
       ).join(', ');
       
       const query = `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${values}`;
-      await sql.query(query);
+      await client.query(query);
       
       log(`✓ Restored ${table}`, 'green');
     }
     
     // Re-enable foreign key checks
-    await sql`SET session_replication_role = 'origin'`;
+    await client.sql`SET session_replication_role = 'origin'`;
     
     log('\n✅ Database restore completed successfully!', 'green');
     

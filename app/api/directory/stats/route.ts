@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { users, courses } from '@/lib/db/schema';
 import { eq, and, asc, desc, sql, isNotNull } from 'drizzle-orm';
@@ -8,7 +8,7 @@ import type { ApiResponse } from '@/lib/types';
  * GET /api/directory/stats
  * Public stats endpoint - no authentication required
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get count of head TAs
     const headTACount = await db

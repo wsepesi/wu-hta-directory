@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Typography } from "@/components/ui/Typography";
+import { FormSkeleton } from "@/components/ui/FormSkeleton";
+import { ProgressiveForm } from "./ProgressiveForm";
 
 interface RegisterFormData {
   email: string;
@@ -35,38 +36,37 @@ export default function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  
+  // Check for server-side errors from progressive enhancement
+  const serverError = searchParams.get('error');
 
   const [formData, setFormData] = useState<RegisterFormData>({
-    email: "",
+    email: searchParams.get('email') || "",
     password: "",
     confirmPassword: "",
-    firstName: "",
-    lastName: "",
-    gradYear: "",
-    degreeProgram: "",
-    currentRole: "",
-    location: "",
-    linkedinUrl: "",
-    personalSite: "",
+    firstName: searchParams.get('firstName') || "",
+    lastName: searchParams.get('lastName') || "",
+    gradYear: searchParams.get('gradYear') || "",
+    degreeProgram: searchParams.get('degreeProgram') || "",
+    currentRole: searchParams.get('currentRole') || "",
+    location: searchParams.get('location') || "",
+    linkedinUrl: searchParams.get('linkedinUrl') || "",
+    personalSite: searchParams.get('personalSite') || "",
   });
 
   const [error, setError] = useState("");
+  
+  // Set server error if present
+  useEffect(() => {
+    if (serverError) {
+      setError(serverError);
+    }
+  }, [serverError]);
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
   const [tokenError, setTokenError] = useState("");
 
-  // Validate token on mount
-  useEffect(() => {
-    if (!token) {
-      setTokenError("Invalid registration link. Please use the link from your invitation email.");
-      setIsValidating(false);
-      return;
-    }
-
-    validateToken();
-  }, [token]);
-
-  const validateToken = async () => {
+  const validateToken = useCallback(async () => {
     try {
       const response = await fetch('/api/invitations/validate', {
         method: 'POST',
@@ -83,12 +83,23 @@ export default function RegisterForm() {
           setFormData((prev) => ({ ...prev, email: data.data.email }));
         }
       }
-    } catch (error) {
+    } catch {
       setTokenError("Failed to validate invitation token.");
     } finally {
       setIsValidating(false);
     }
-  };
+  }, [token]);
+
+  // Validate token on mount
+  useEffect(() => {
+    if (!token) {
+      setTokenError("Invalid registration link. Please use the link from your invitation email.");
+      setIsValidating(false);
+      return;
+    }
+
+    validateToken();
+  }, [token, validateToken]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -157,7 +168,7 @@ export default function RegisterForm() {
         router.push("/");
         router.refresh();
       }
-    } catch (error) {
+    } catch {
       setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
@@ -166,9 +177,9 @@ export default function RegisterForm() {
 
   if (isValidating) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <LoadingSpinner size="md" />
-        <span className="ml-3 text-gray-600">Validating invitation...</span>
+      <div className="max-w-md mx-auto">
+        <Typography variant="body" className="text-center mb-6">Validating invitation...</Typography>
+        <FormSkeleton fields={4} showButtons={true} buttonCount={1} />
       </div>
     );
   }
@@ -187,7 +198,14 @@ export default function RegisterForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <ProgressiveForm
+      action="/api/auth/signup-action"
+      method="POST"
+      enhancedOnSubmit={handleSubmit}
+      className="space-y-6"
+    >
+      {/* Hidden field for token */}
+      <input type="hidden" name="token" value={token || ''} />
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <Input
           label="First Name"
@@ -197,6 +215,10 @@ export default function RegisterForm() {
           value={formData.firstName}
           onChange={handleChange}
           disabled={isLoading}
+          minLength={1}
+          maxLength={50}
+          pattern="[a-zA-Z\s\-']+"
+          title="Please enter a valid first name"
         />
 
         <Input
@@ -207,6 +229,10 @@ export default function RegisterForm() {
           value={formData.lastName}
           onChange={handleChange}
           disabled={isLoading}
+          minLength={1}
+          maxLength={50}
+          pattern="[a-zA-Z\s\-']+"
+          title="Please enter a valid last name"
         />
       </div>
 
@@ -219,6 +245,8 @@ export default function RegisterForm() {
         onChange={handleChange}
         placeholder="you@wustl.edu"
         disabled={isLoading}
+        pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
+        title="Please enter a valid email address"
       />
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -230,6 +258,9 @@ export default function RegisterForm() {
           value={formData.password}
           onChange={handleChange}
           disabled={isLoading}
+          minLength={8}
+          pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,}"
+          title="Password must be at least 8 characters with uppercase, lowercase, and numbers"
         />
 
         <Input
@@ -240,6 +271,8 @@ export default function RegisterForm() {
           value={formData.confirmPassword}
           onChange={handleChange}
           disabled={isLoading}
+          minLength={8}
+          title="Please confirm your password"
         />
       </div>
 
@@ -276,6 +309,7 @@ export default function RegisterForm() {
           max="2100"
           placeholder="2024"
           disabled={isLoading}
+          title="Please enter a valid graduation year"
         />
 
         <Input
@@ -318,6 +352,8 @@ export default function RegisterForm() {
         placeholder="https://linkedin.com/in/yourprofile"
         helperText="Optional - share your professional profile"
         disabled={isLoading}
+        pattern="https?://.*"
+        title="Please enter a valid URL starting with http:// or https://"
       />
 
       <Input
@@ -329,6 +365,8 @@ export default function RegisterForm() {
         placeholder="https://yourwebsite.com"
         helperText="Optional - share your portfolio or blog"
         disabled={isLoading}
+        pattern="https?://.*"
+        title="Please enter a valid URL starting with http:// or https://"
       />
 
       {error && (
@@ -344,7 +382,7 @@ export default function RegisterForm() {
         disabled={isLoading}
         className="w-full"
       >
-        {isLoading ? <LoadingSpinner size="sm" className="mx-auto" /> : "Create Account"}
+        {isLoading ? "Creating account..." : "Create Account"}
       </Button>
 
       <div className="text-sm text-center">
@@ -353,6 +391,6 @@ export default function RegisterForm() {
           Sign in
         </Link>
       </div>
-    </form>
+    </ProgressiveForm>
   );
 }

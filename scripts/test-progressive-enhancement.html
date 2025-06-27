@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progressive Enhancement Test</title>
+    <style>
+        /* CSS from globals.css */
+        .js-only {
+            display: none;
+        }
+        
+        .js .js-only {
+            display: block;
+        }
+        
+        .no-js-only {
+            display: block;
+        }
+        
+        .js .no-js-only {
+            display: none;
+        }
+        
+        /* Test styles */
+        body {
+            font-family: Arial, sans-serif;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-box {
+            padding: 1rem;
+            margin: 1rem 0;
+            border: 2px solid #333;
+            border-radius: 4px;
+        }
+        
+        .success { background-color: #d4edda; border-color: #28a745; }
+        .warning { background-color: #fff3cd; border-color: #ffc107; }
+    </style>
+    <script>
+        // Progressive enhancement script from layout.tsx
+        document.documentElement.classList.remove('no-js');
+        document.documentElement.classList.add('js');
+    </script>
+</head>
+<body>
+    <h1>Progressive Enhancement Test</h1>
+    
+    <div class="test-box warning no-js-only">
+        <h2>No JavaScript Version</h2>
+        <p>This content is visible when JavaScript is disabled.</p>
+        <p>Forms will submit normally and reload the page.</p>
+    </div>
+    
+    <div class="test-box success js-only">
+        <h2>JavaScript Enhanced Version</h2>
+        <p>This content is visible when JavaScript is enabled.</p>
+        <p>Forms will update dynamically without page reload.</p>
+    </div>
+    
+    <noscript>
+        <div class="test-box warning">
+            <h2>JavaScript is Disabled</h2>
+            <p>The application will still work, but with full page reloads for filter changes.</p>
+        </div>
+    </noscript>
+    
+    <h2>Test Instructions:</h2>
+    <ol>
+        <li>Open this file in a browser with JavaScript enabled - you should see the "JavaScript Enhanced Version" box</li>
+        <li>Disable JavaScript in your browser settings</li>
+        <li>Refresh the page - you should see the "No JavaScript Version" box</li>
+    </ol>
+</body>
+</html>

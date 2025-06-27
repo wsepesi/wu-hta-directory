@@ -5,7 +5,7 @@ import { TACard } from '../ta/TACard';
 import { Input } from '../ui/Input';
 import { Card, CardBody } from '../ui/Card';
 import { ScriptHeading, SerifHeading, BodyText } from '../ui/Typography';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { Skeleton, SkeletonCard } from '../ui/Skeleton';
 import { ErrorMessage } from '../ui/ErrorMessage';
 import { clsx } from 'clsx';
 
@@ -88,8 +88,31 @@ export function PublicDirectory({
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <LoadingSpinner size="lg" />
+      <div className="space-y-8">
+        {/* Header skeleton */}
+        <div className="text-center">
+          <Skeleton className="h-12 w-64 mx-auto mb-4" />
+          <Skeleton className="h-6 w-96 mx-auto" />
+        </div>
+
+        {/* Filters skeleton */}
+        <SkeletonCard>
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+            </div>
+          </div>
+        </SkeletonCard>
+
+        {/* TA cards skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <SkeletonCard key={i} className="h-64" />
+          ))}
+        </div>
       </div>
     );
   }

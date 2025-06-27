@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '../ui/Input';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { Skeleton } from '../ui/Skeleton';
 import { BodyText } from '../ui/Typography';
 import { clsx } from 'clsx';
 
@@ -30,7 +30,7 @@ export function GlobalSearch({
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
-  const debounceTimer = useRef<NodeJS.Timeout>();
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -51,7 +51,9 @@ export function GlobalSearch({
     }
 
     // Debounce search
-    clearTimeout(debounceTimer.current);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
     debounceTimer.current = setTimeout(async () => {
       setLoading(true);
       try {
@@ -66,7 +68,11 @@ export function GlobalSearch({
       }
     }, 300);
 
-    return () => clearTimeout(debounceTimer.current);
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
   }, [query, onSearch]);
 
   const getTypeIcon = (type: SearchResult['type']) => {
@@ -118,7 +124,12 @@ export function GlobalSearch({
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2">
           {loading ? (
-            <LoadingSpinner size="sm" />
+            <div className="w-5 h-5">
+              <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
           ) : (
             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -130,7 +141,23 @@ export function GlobalSearch({
 
       {showResults && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto z-50">
-          {results.length > 0 ? (
+          {loading ? (
+            // Search Results Skeleton
+            <div className="py-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-start gap-3 px-4 py-3">
+                  <Skeleton variant="circular" width={16} height={16} className="mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Skeleton variant="text" width="60%" className="h-4" />
+                      <Skeleton variant="rectangular" width={60} height={18} className="rounded" />
+                    </div>
+                    <Skeleton variant="text" width="40%" className="h-3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : results.length > 0 ? (
             <ul className="py-2">
               {results.map((result) => (
                 <li key={result.id}>
@@ -164,7 +191,7 @@ export function GlobalSearch({
           ) : (
             <div className="px-4 py-8 text-center">
               <BodyText className="text-sm text-gray-500">
-                No results found for "{query}"
+                No results found for &quot;{query}&quot;
               </BodyText>
             </div>
           )}

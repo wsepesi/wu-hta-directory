@@ -1,4 +1,4 @@
-import { eq, and, or, desc, asc, lt, gt, isNull } from 'drizzle-orm';
+import { eq, and, desc, lt, gt, isNull, count } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { invitations } from '@/lib/db/schema';
 import type {
@@ -35,7 +35,11 @@ export class InvitationRepository {
         .where(eq(invitations.id, id))
         .limit(1);
       
-      return result[0] || null;
+      return result[0] ? {
+        ...result[0],
+        invitedBy: result[0].invitedBy || undefined,
+        usedAt: result[0].usedAt || undefined,
+      } : null;
     } catch (error) {
       console.error('Error finding invitation by ID:', error);
       throw new Error('Failed to find invitation');
@@ -52,7 +56,11 @@ export class InvitationRepository {
         .where(eq(invitations.token, token))
         .limit(1);
       
-      return result[0] || null;
+      return result[0] ? {
+        ...result[0],
+        invitedBy: result[0].invitedBy || undefined,
+        usedAt: result[0].usedAt || undefined,
+      } : null;
     } catch (error) {
       console.error('Error finding invitation by token:', error);
       throw new Error('Failed to find invitation');
@@ -69,7 +77,11 @@ export class InvitationRepository {
         .where(eq(invitations.email, email.toLowerCase()))
         .orderBy(desc(invitations.createdAt));
       
-      return result;
+      return result.map(row => ({
+        ...row,
+        invitedBy: row.invitedBy || undefined,
+        usedAt: row.usedAt || undefined,
+      }));
     } catch (error) {
       console.error('Error finding invitations by email:', error);
       throw new Error('Failed to find invitations');
@@ -81,19 +93,23 @@ export class InvitationRepository {
    */
   async findAll(includeExpired: boolean = false): Promise<Invitation[]> {
     try {
-      let query = db.select().from(invitations);
+      let queryBuilder = db.select().from(invitations);
       
       if (!includeExpired) {
-        query = query.where(
+        queryBuilder = queryBuilder.where(
           and(
             gt(invitations.expiresAt, new Date()),
             isNull(invitations.usedAt)
           )
-        );
+        ) as typeof queryBuilder;
       }
       
-      const result = await query.orderBy(desc(invitations.createdAt));
-      return result;
+      const result = await queryBuilder.orderBy(desc(invitations.createdAt));
+      return result.map(row => ({
+        ...row,
+        invitedBy: row.invitedBy || undefined,
+        usedAt: row.usedAt || undefined,
+      }));
     } catch (error) {
       console.error('Error finding all invitations:', error);
       throw new Error('Failed to find invitations');
@@ -115,7 +131,11 @@ export class InvitationRepository {
         )
         .orderBy(desc(invitations.createdAt));
       
-      return result;
+      return result.map(row => ({
+        ...row,
+        invitedBy: row.invitedBy || undefined,
+        usedAt: row.usedAt || undefined,
+      }));
     } catch (error) {
       console.error('Error finding pending invitations:', error);
       throw new Error('Failed to find invitations');
@@ -137,7 +157,11 @@ export class InvitationRepository {
         )
         .orderBy(desc(invitations.createdAt));
       
-      return result;
+      return result.map(row => ({
+        ...row,
+        invitedBy: row.invitedBy || undefined,
+        usedAt: row.usedAt || undefined,
+      }));
     } catch (error) {
       console.error('Error finding expired invitations:', error);
       throw new Error('Failed to find invitations');
@@ -154,7 +178,11 @@ export class InvitationRepository {
         .where(eq(invitations.invitedBy, inviterId))
         .orderBy(desc(invitations.createdAt));
       
-      return result;
+      return result.map(row => ({
+        ...row,
+        invitedBy: row.invitedBy || undefined,
+        usedAt: row.usedAt || undefined,
+      }));
     } catch (error) {
       console.error('Error finding invitations by inviter:', error);
       throw new Error('Failed to find invitations');
@@ -185,7 +213,11 @@ export class InvitationRepository {
         throw new Error('Failed to create invitation');
       }
       
-      return result[0];
+      return {
+        ...result[0],
+        invitedBy: result[0].invitedBy || undefined,
+        usedAt: result[0].usedAt || undefined,
+      };
     } catch (error) {
       console.error('Error creating invitation:', error);
       if (error instanceof Error && error.message.includes('already exists')) {
@@ -211,7 +243,11 @@ export class InvitationRepository {
         throw new Error('Invitation not found');
       }
       
-      return result[0];
+      return {
+        ...result[0],
+        invitedBy: result[0].invitedBy || undefined,
+        usedAt: result[0].usedAt || undefined,
+      };
     } catch (error) {
       console.error('Error marking invitation as used:', error);
       throw new Error('Failed to update invitation');
@@ -246,7 +282,14 @@ export class InvitationRepository {
         },
       });
       
-      return result || null;
+      if (!result) return null;
+      
+      return {
+        ...result,
+        invitedBy: result.invitedBy || undefined,
+        usedAt: result.usedAt || undefined,
+        inviter: result.inviter || undefined
+      } as InvitationWithRelations;
     } catch (error) {
       console.error('Error finding invitation with relations:', error);
       throw new Error('Failed to find invitation');
@@ -269,7 +312,11 @@ export class InvitationRepository {
         )
         .limit(1);
       
-      return result[0] || null;
+      return result[0] ? {
+        ...result[0],
+        invitedBy: result[0].invitedBy || undefined,
+        usedAt: result[0].usedAt || undefined,
+      } : null;
     } catch (error) {
       console.error('Error finding valid invitation by token:', error);
       throw new Error('Failed to find invitation');
@@ -293,7 +340,11 @@ export class InvitationRepository {
         .orderBy(desc(invitations.createdAt))
         .limit(1);
       
-      return result[0] || null;
+      return result[0] ? {
+        ...result[0],
+        invitedBy: result[0].invitedBy || undefined,
+        usedAt: result[0].usedAt || undefined,
+      } : null;
     } catch (error) {
       console.error('Error finding pending invitation by email:', error);
       throw new Error('Failed to find invitation');
@@ -319,7 +370,11 @@ export class InvitationRepository {
         throw new Error('Invitation not found');
       }
       
-      return result[0];
+      return {
+        ...result[0],
+        invitedBy: result[0].invitedBy || undefined,
+        usedAt: result[0].usedAt || undefined,
+      };
     } catch (error) {
       console.error('Error extending invitation expiration:', error);
       throw new Error('Failed to update invitation');
@@ -331,7 +386,7 @@ export class InvitationRepository {
    */
   async countPending(): Promise<number> {
     try {
-      const result = await db.select({ count: invitations.id })
+      const result = await db.select({ count: count() })
         .from(invitations)
         .where(
           and(
@@ -340,7 +395,7 @@ export class InvitationRepository {
           )
         );
       
-      return result.length;
+      return Number(result[0]?.count) || 0;
     } catch (error) {
       console.error('Error counting pending invitations:', error);
       throw new Error('Failed to count invitations');
@@ -352,11 +407,11 @@ export class InvitationRepository {
    */
   async countByInviter(inviterId: string): Promise<number> {
     try {
-      const result = await db.select({ count: invitations.id })
+      const result = await db.select({ count: count() })
         .from(invitations)
         .where(eq(invitations.invitedBy, inviterId));
       
-      return result.length;
+      return Number(result[0]?.count) || 0;
     } catch (error) {
       console.error('Error counting invitations by inviter:', error);
       throw new Error('Failed to count invitations');
@@ -401,7 +456,11 @@ export class InvitationRepository {
         throw new Error('Invitation not found');
       }
       
-      return result[0];
+      return {
+        ...result[0],
+        invitedBy: result[0].invitedBy || undefined,
+        usedAt: result[0].usedAt || undefined,
+      };
     } catch (error) {
       console.error('Error regenerating invitation token:', error);
       throw new Error('Failed to update invitation');
@@ -420,7 +479,12 @@ export class InvitationRepository {
         orderBy: [desc(invitations.createdAt)],
       });
       
-      return result;
+      return result.map(row => ({
+        ...row,
+        invitedBy: row.invitedBy || undefined,
+        usedAt: row.usedAt || undefined,
+        inviter: row.inviter || undefined
+      } as InvitationWithRelations));
     } catch (error) {
       console.error('Error finding invitations with inviter:', error);
       throw new Error('Failed to find invitations');
@@ -443,7 +507,11 @@ export class InvitationRepository {
         .values(invitationValues)
         .returning();
       
-      return result;
+      return result.map(row => ({
+        ...row,
+        invitedBy: row.invitedBy || undefined,
+        usedAt: row.usedAt || undefined,
+      }));
     } catch (error) {
       console.error('Error batch creating invitations:', error);
       throw new Error('Failed to create invitations');

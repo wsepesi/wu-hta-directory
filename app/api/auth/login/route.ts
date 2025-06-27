@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loginRateLimiter } from '@/lib/rate-limit';
-import { signIn } from 'next-auth/react';
+import { authLogger } from '@/lib/logger';
 import type { ApiResponse } from '@/lib/types';
 
 /**
@@ -8,14 +8,20 @@ import type { ApiResponse } from '@/lib/types';
  * Login with rate limiting
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
+  // Get IP address for rate limiting
+  const ip = request.headers.get('x-forwarded-for') || 
+             request.headers.get('x-real-ip') || 
+             request.headers.get('cf-connecting-ip') || 
+             'anonymous';
+  
   try {
-    // Get IP address for rate limiting
-    const ip = request.ip || request.headers.get('x-forwarded-for') || 'anonymous';
     
     // Check rate limit (5 attempts per 15 minutes)
     try {
       await loginRateLimiter.check(5, ip);
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { 
           error: 'Too many login attempts. Please try again in 15 minutes.',
@@ -32,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { email, password, rememberMe } = body;
+    const { email, password } = body;
 
     // Validate required fields
     if (!email || !password) {
@@ -46,6 +52,12 @@ export async function POST(request: NextRequest) {
     // Instead, we'll validate credentials and return success/failure
     // The actual sign-in will be handled by NextAuth through the client
     
+    authLogger.info('Login API endpoint called', {
+      email: email?.toLowerCase(),
+      ip,
+      duration: Date.now() - startTime
+    });
+    
     return NextResponse.json(
       { 
         data: { validated: true },
@@ -54,7 +66,10 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error during login:', error);
+    authLogger.error('Login API error', error, {
+      ip,
+      duration: Date.now() - startTime
+    });
     return NextResponse.json(
       { error: 'Failed to process login request' } as ApiResponse<never>,
       { status: 500 }

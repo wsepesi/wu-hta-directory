@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { auditLogs } from "./db/schema";
 import { headers } from "next/headers";
-import { sql, desc } from "drizzle-orm";
+import { desc, eq, and, gte, lte } from "drizzle-orm";
 
 export type AuditAction = 
   | "USER_CREATED"
@@ -34,13 +34,13 @@ interface AuditLogEntry {
   action: AuditAction;
   entityType: EntityType;
   entityId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export async function logAuditEvent(entry: AuditLogEntry) {
   try {
     // Get request headers for IP and user agent
-    const headersList = headers();
+    const headersList = await headers();
     const ipAddress = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
     const userAgent = headersList.get("user-agent") || "unknown";
 
@@ -68,40 +68,39 @@ export async function getAuditLogs(filters?: {
   endDate?: Date;
   limit?: number;
 }) {
-  const query = db.select().from(auditLogs);
-
-  // Apply filters
+  // Build conditions
   const conditions = [];
   if (filters?.userId) {
-    conditions.push(`user_id = '${filters.userId}'`);
+    conditions.push(eq(auditLogs.userId, filters.userId));
   }
   if (filters?.action) {
-    conditions.push(`action = '${filters.action}'`);
+    conditions.push(eq(auditLogs.action, filters.action));
   }
   if (filters?.entityType) {
-    conditions.push(`entity_type = '${filters.entityType}'`);
+    conditions.push(eq(auditLogs.entityType, filters.entityType));
   }
   if (filters?.entityId) {
-    conditions.push(`entity_id = '${filters.entityId}'`);
+    conditions.push(eq(auditLogs.entityId, filters.entityId));
   }
   if (filters?.startDate) {
-    conditions.push(`created_at >= '${filters.startDate.toISOString()}'`);
+    conditions.push(gte(auditLogs.createdAt, filters.startDate));
   }
   if (filters?.endDate) {
-    conditions.push(`created_at <= '${filters.endDate.toISOString()}'`);
+    conditions.push(lte(auditLogs.createdAt, filters.endDate));
   }
 
-  // Build the where clause
-  let finalQuery = query;
-  if (conditions.length > 0) {
-    finalQuery = query.where(sql`${sql.raw(conditions.join(" AND "))}`);
-  }
+  // Build the query in one chain to avoid type issues
+  const queryBuilder = db.select().from(auditLogs);
+  
+  const queryWithConditions = conditions.length > 0 
+    ? queryBuilder.where(conditions.length === 1 ? conditions[0] : and(...conditions))
+    : queryBuilder;
 
-  // Apply ordering and limit
-  finalQuery = finalQuery.orderBy(desc(auditLogs.createdAt));
-  if (filters?.limit) {
-    finalQuery = finalQuery.limit(filters.limit);
-  }
+  const queryWithOrder = queryWithConditions.orderBy(desc(auditLogs.createdAt));
+  
+  const finalQuery = filters?.limit 
+    ? queryWithOrder.limit(filters.limit)
+    : queryWithOrder;
 
   return await finalQuery;
 }

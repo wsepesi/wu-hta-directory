@@ -3,8 +3,10 @@ export { Button } from './Button';
 export { Card } from './Card';
 export { ErrorMessage } from './ErrorMessage';
 export { Input } from './Input';
-export { LoadingSpinner } from './LoadingSpinner';
-export { Skeleton } from './Skeleton';
+// export { LoadingSpinner } from './LoadingSpinner'; // Deprecated - use Skeleton components instead
+export { Skeleton, SkeletonCard, SkeletonList, SkeletonTable } from './Skeleton';
+export { FormSkeleton, ModalFormSkeleton, SearchFormSkeleton, InlineFormSkeleton, SectionedFormSkeleton } from './FormSkeleton';
+export { ModalSkeleton } from './ModalSkeleton';
 export { Toast, ToastContainer as OriginalToastContainer, showToast as originalShowToast } from './Toast';
 export { ScriptHeading, SerifHeading, SansHeading } from './Typography';
 

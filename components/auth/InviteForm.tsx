@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Typography } from "@/components/ui/Typography";
+import { SkeletonList } from "@/components/ui/Skeleton";
 import { Card } from "@/components/ui/Card";
 import { MissingTAIndicator } from "@/components/course/MissingTAIndicator";
 import type { Course, CourseOfferingWithRelations, InvitationWithRelations } from "@/lib/types";
@@ -20,7 +20,7 @@ interface InviteFormData {
 }
 
 export default function InviteForm() {
-  const { data: session } = useSession();
+  useSession();
   const searchParams = useSearchParams();
   const courseOfferingId = searchParams.get('courseOfferingId');
   
@@ -39,16 +39,7 @@ export default function InviteForm() {
   const [error, setError] = useState("");
   const [inviteLink, setInviteLink] = useState("");
 
-  // Load courses and invitation history on mount
-  useEffect(() => {
-    loadCourses();
-    loadInvitationHistory();
-    if (courseOfferingId) {
-      loadCourseOffering(courseOfferingId);
-    }
-  }, [courseOfferingId]);
-
-  const loadCourses = async () => {
+  const loadCourses = useCallback(async () => {
     try {
       const response = await fetch("/api/courses");
       if (response.ok) {
@@ -58,9 +49,9 @@ export default function InviteForm() {
     } catch (error) {
       console.error("Failed to load courses:", error);
     }
-  };
+  }, []);
 
-  const loadCourseOffering = async (offeringId: string) => {
+  const loadCourseOffering = useCallback(async (offeringId: string) => {
     try {
       const response = await fetch(`/api/course-offerings/${offeringId}?include=relations`);
       if (response.ok) {
@@ -74,9 +65,9 @@ export default function InviteForm() {
     } catch (error) {
       console.error("Failed to load course offering:", error);
     }
-  };
+  }, []);
 
-  const loadInvitationHistory = async () => {
+  const loadInvitationHistory = useCallback(async () => {
     try {
       const response = await fetch("/api/invitations");
       if (response.ok) {
@@ -88,7 +79,16 @@ export default function InviteForm() {
     } finally {
       setIsLoadingHistory(false);
     }
-  };
+  }, []);
+
+  // Load courses and invitation history on mount
+  useEffect(() => {
+    loadCourses();
+    loadInvitationHistory();
+    if (courseOfferingId) {
+      loadCourseOffering(courseOfferingId);
+    }
+  }, [courseOfferingId, loadCourses, loadInvitationHistory, loadCourseOffering]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -133,7 +133,7 @@ export default function InviteForm() {
       
       // Reload invitation history
       loadInvitationHistory();
-    } catch (error) {
+    } catch {
       setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
@@ -194,7 +194,7 @@ export default function InviteForm() {
           value={formData.email}
           onChange={handleChange}
           placeholder="colleague@wustl.edu"
-          helperText="The person you're inviting will receive an email with a registration link."
+          helperText="The person you&apos;re inviting will receive an email with a registration link."
           disabled={isLoading}
         />
 
@@ -207,7 +207,7 @@ export default function InviteForm() {
             name="suggestedCourseId"
             value={formData.suggestedCourseId}
             onChange={handleChange}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 font-sans text-charcoal focus:outline-none focus:ring-2 focus:ring-charcoal focus:border-transparent transition-colors duration-200"
+            className="w-full px-2 py-1.5 border-b border-charcoal/30 font-serif text-charcoal bg-transparent focus:outline-none focus:border-charcoal transition-opacity duration-200"
             disabled={isLoading}
           >
             <option value="">No course suggestion</option>
@@ -217,7 +217,7 @@ export default function InviteForm() {
               </option>
             ))}
           </select>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-charcoal/60">
             Suggest a course this person might have been a Head TA for.
           </p>
         </div>
@@ -232,15 +232,15 @@ export default function InviteForm() {
             rows={4}
             value={formData.message}
             onChange={handleChange}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 font-sans text-charcoal focus:outline-none focus:ring-2 focus:ring-charcoal focus:border-transparent transition-colors duration-200 placeholder:text-gray-400"
+            className="w-full px-2 py-1.5 border border-charcoal/30 font-serif text-charcoal bg-transparent focus:outline-none focus:border-charcoal transition-opacity duration-200 placeholder:text-charcoal/40"
             placeholder={
               courseOffering 
-                ? `Hi! We're looking for a Head TA for ${courseOffering.course?.courseNumber} (${courseOffering.semester}). I thought you might be interested...`
-                : "Hey! I'd like to invite you to join the WU Head TA Directory..."
+                ? `Hi! We&apos;re looking for a Head TA for ${courseOffering.course?.courseNumber} (${courseOffering.semester}). I thought you might be interested...`
+                : "Hey! I&apos;d like to invite you to join the WU Head TA Directory..."
             }
             disabled={isLoading}
           />
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-charcoal/60">
             {courseOffering 
               ? "This person will be notified about the specific TA opportunity."
               : "Add a personal note to be included in the invitation email."}
@@ -289,7 +289,7 @@ export default function InviteForm() {
           disabled={isLoading}
           className="w-full"
         >
-          {isLoading ? <LoadingSpinner size="sm" className="mx-auto" /> : "Send Invitation"}
+          {isLoading ? "Sending invitation..." : "Send Invitation"}
         </Button>
       </form>
 
@@ -300,13 +300,11 @@ export default function InviteForm() {
         </Typography>
         
         {isLoadingHistory ? (
-          <div className="flex justify-center py-8">
-            <LoadingSpinner size="md" />
-          </div>
+          <SkeletonList count={3} />
         ) : invitationHistory.length === 0 ? (
           <Card variant="secondary" className="text-center py-8">
             <Typography variant="body" className="text-gray-500">
-              You haven't sent any invitations yet.
+              You haven&apos;t sent any invitations yet.
             </Typography>
           </Card>
         ) : (
@@ -364,7 +362,7 @@ export default function InviteForm() {
           </li>
           <li className="flex items-start">
             <span className="mr-2">•</span>
-            <span>You'll be recorded as the person who invited them</span>
+            <span>You&apos;ll be recorded as the person who invited them</span>
           </li>
         </ul>
       </div>

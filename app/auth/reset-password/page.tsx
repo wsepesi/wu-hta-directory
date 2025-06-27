@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Typography } from "@/components/ui/Typography";
+import { FormSkeleton } from "@/components/ui/FormSkeleton";
+import { ProgressiveAuthForm } from "@/components/auth/ProgressiveAuthForm";
 
 const PASSWORD_REQUIREMENTS = [
   { test: (pwd: string) => pwd.length >= 8, message: "At least 8 characters" },
@@ -18,7 +19,6 @@ const PASSWORD_REQUIREMENTS = [
 ];
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -29,6 +29,20 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [tokenError, setTokenError] = useState("");
   const [success, setSuccess] = useState(false);
+  
+  // Handle server-side errors
+  useEffect(() => {
+    const serverError = searchParams.get('error');
+    const serverCode = searchParams.get('code');
+    
+    if (serverError && !tokenError) {
+      if (serverCode === 'invalid_token' || serverCode === 'expired_token') {
+        setTokenError(serverError);
+      } else {
+        setError(serverError);
+      }
+    }
+  }, [searchParams, tokenError]);
 
   // Validate token on mount
   useEffect(() => {
@@ -37,24 +51,31 @@ export default function ResetPasswordPage() {
       setIsValidating(false);
       return;
     }
+    
+    // Skip validation if we already have a server error
+    const serverCode = searchParams.get('code');
+    if (serverCode === 'invalid_token' || serverCode === 'expired_token') {
+      setIsValidating(false);
+      return;
+    }
+
+    const validateToken = async () => {
+      try {
+        const response = await fetch(`/api/auth/reset-password?token=${token}`);
+        const data = await response.json();
+
+        if (!response.ok || !data.data?.valid) {
+          setTokenError(data.error || "Invalid or expired reset link.");
+        }
+      } catch {
+        setTokenError("Failed to validate reset link.");
+      } finally {
+        setIsValidating(false);
+      }
+    };
 
     validateToken();
-  }, [token]);
-
-  const validateToken = async () => {
-    try {
-      const response = await fetch(`/api/auth/reset-password?token=${token}`);
-      const data = await response.json();
-
-      if (!response.ok || !data.data?.valid) {
-        setTokenError(data.error || "Invalid or expired reset link.");
-      }
-    } catch (error) {
-      setTokenError("Failed to validate reset link.");
-    } finally {
-      setIsValidating(false);
-    }
-  };
+  }, [token, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +110,7 @@ export default function ResetPasswordPage() {
       } else {
         setError(data.error || "Failed to reset password");
       }
-    } catch (error) {
+    } catch {
       setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
@@ -99,9 +120,9 @@ export default function ResetPasswordPage() {
   if (isValidating) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center">
-          <LoadingSpinner size="md" />
-          <span className="ml-3 text-gray-600">Validating reset link...</span>
+        <div className="sm:mx-auto sm:w-full sm:max-w-md bg-white p-8 rounded-lg shadow">
+          <Typography variant="body" className="text-center mb-6">Validating reset link...</Typography>
+          <FormSkeleton fields={2} showButtons={true} buttonCount={1} />
         </div>
       </div>
     );
@@ -170,23 +191,37 @@ export default function ResetPasswordPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <ProgressiveAuthForm 
+            className="space-y-6" 
+            fallbackAction="/api/auth/reset-password-action"
+            method="POST"
+            enhancedOnSubmit={handleSubmit}
+          >
+            {/* Hidden token field */}
+            <input type="hidden" name="token" value={token || ''} />
             <Input
               label="New Password"
+              name="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={isLoading}
+              minLength={8}
+              pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}"
+              title="Password must be at least 8 characters with uppercase, lowercase, number, and special character"
             />
 
             <Input
               label="Confirm Password"
+              name="confirmPassword"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               disabled={isLoading}
+              minLength={8}
+              title="Please confirm your new password"
             />
 
             {/* Password Requirements */}
@@ -224,9 +259,9 @@ export default function ResetPasswordPage() {
               disabled={isLoading}
               className="w-full"
             >
-              {isLoading ? <LoadingSpinner size="sm" className="mx-auto" /> : "Reset password"}
+              {isLoading ? "Resetting..." : "Reset password"}
             </Button>
-          </form>
+          </ProgressiveAuthForm>
         </div>
       </div>
     </div>

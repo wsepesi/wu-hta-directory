@@ -1,0 +1,258 @@
+import Link from 'next/link';
+import { Suspense } from 'react';
+import { taAssignmentRepository } from "@/lib/repositories/hta-records";
+import { Skeleton } from '@/components/ui/Skeleton';
+import type { TAAssignmentWithRelations } from '@/lib/types';
+
+interface TAWorkload {
+  id: string;
+  name: string;
+  currentHours: number;
+  maxHours: number;
+  courseCount: number;
+  courses: Array<{
+    courseNumber: string;
+    hoursPerWeek: number;
+  }>;
+}
+
+interface WorkloadStats {
+  totalTAs: number;
+  overloadedTAs: number;
+  underutilizedTAs: number;
+  averageUtilization: number;
+  topWorkloads: TAWorkload[];
+}
+
+// Workload stats skeleton
+function WorkloadStatsSkeleton() {
+  return (
+    <div className="grid grid-cols-3 gap-4 text-center">
+      {[1, 2, 3].map((i) => (
+        <div key={i}>
+          <Skeleton variant="text" width="40px" height="32px" className="mx-auto mb-1" />
+          <Skeleton variant="text" width="80px" height="14px" className="mx-auto" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Utilization bar skeleton
+function UtilizationBarSkeleton() {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <Skeleton variant="text" width="120px" height="14px" />
+        <Skeleton variant="text" width="40px" height="14px" />
+      </div>
+      <Skeleton variant="rectangular" width="100%" height="8px" className="rounded-full" />
+    </div>
+  );
+}
+
+// Top workloads skeleton
+function TopWorkloadsSkeleton() {
+  return (
+    <div>
+      <Skeleton variant="text" width="120px" height="16px" className="mb-3" />
+      <div className="space-y-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="flex items-center justify-between">
+            <div className="flex items-center flex-1 min-w-0">
+              <Skeleton variant="text" width="120px" height="14px" />
+              <Skeleton variant="text" width="60px" height="12px" className="ml-2" />
+            </div>
+            <Skeleton variant="text" width="60px" height="20px" className="ml-2 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Stats component
+async function WorkloadStats({ stats }: { stats: WorkloadStats }) {
+  return (
+    <div className="grid grid-cols-3 gap-4 text-center">
+      <div>
+        <p className="text-2xl font-semibold text-gray-900">{stats.totalTAs}</p>
+        <p className="text-sm text-gray-500">Active TAs</p>
+      </div>
+      <div>
+        <p className="text-2xl font-semibold text-red-600">{stats.overloadedTAs}</p>
+        <p className="text-sm text-gray-500">Overloaded</p>
+      </div>
+      <div>
+        <p className="text-2xl font-semibold text-blue-600">{stats.underutilizedTAs}</p>
+        <p className="text-sm text-gray-500">Underutilized</p>
+      </div>
+    </div>
+  );
+}
+
+// Utilization bar component
+async function UtilizationBar({ utilization }: { utilization: number }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm text-gray-500">Average Utilization</p>
+        <span className="text-sm font-medium text-gray-900">
+          {utilization.toFixed(1)}%
+        </span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div
+          className={`h-2 rounded-full transition-all duration-300 ${
+            utilization > 90 ? 'bg-red-500' :
+            utilization > 70 ? 'bg-yellow-500' : 'bg-green-500'
+          }`}
+          style={{ width: `${Math.min(utilization, 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Top workloads component
+async function TopWorkloads({ workloads }: { workloads: TAWorkload[] }) {
+  const getUtilizationColor = (hours: number, maxHours: number) => {
+    const utilization = hours / maxHours;
+    if (utilization > 1) return 'text-red-600 bg-red-100';
+    if (utilization > 0.8) return 'text-yellow-600 bg-yellow-100';
+    if (utilization < 0.5) return 'text-blue-600 bg-blue-100';
+    return 'text-green-600 bg-green-100';
+  };
+  
+  return (
+    <div>
+      <h4 className="text-sm font-medium text-gray-900 mb-3">
+        Top 5 Workloads
+      </h4>
+      <div className="space-y-2">
+        {workloads.map((ta) => (
+          <div key={ta.id} className="flex items-center justify-between">
+            <Link
+              href={`/profile/${ta.id}`}
+              className="flex items-center flex-1 min-w-0 hover:text-indigo-600"
+              prefetch={true}
+            >
+              <span className="text-sm truncate">{ta.name}</span>
+              <span className="ml-2 text-xs text-gray-500">
+                ({ta.courseCount} {ta.courseCount === 1 ? 'course' : 'courses'})
+              </span>
+            </Link>
+            <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${
+              getUtilizationColor(ta.currentHours, ta.maxHours)
+            }`}>
+              {ta.currentHours}/{ta.maxHours}h
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Actions component
+async function WorkloadActions({ overloadedCount }: { overloadedCount: number }) {
+  if (overloadedCount === 0) return null;
+  
+  return (
+    <div className="border-t pt-4">
+      <p className="text-sm text-red-600 mb-3">
+        ⚠️ {overloadedCount} TA{overloadedCount !== 1 ? 's are' : ' is'} overloaded
+      </p>
+      <Link
+        href="/people?filter=overloaded"
+        className="block w-full text-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+        prefetch={true}
+      >
+        Review Overloaded TAs
+      </Link>
+    </div>
+  );
+}
+
+export async function EnhancedTAWorkloadWidget() {
+  // Fetch all TA assignments for current semester
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  const currentSeason = currentMonth >= 7 ? "Fall" : "Spring";
+  const semester = `${currentSeason} ${currentYear}`;
+  
+  const assignments = await taAssignmentRepository.findBySemester(semester);
+  
+  // Calculate workload statistics
+  const taWorkloads = new Map<string, TAWorkload>();
+  
+  assignments.forEach((assignment: TAAssignmentWithRelations) => {
+    const taId = assignment.user?.id;
+    if (!taId || !assignment.user) return;
+    
+    if (!taWorkloads.has(taId)) {
+      taWorkloads.set(taId, {
+        id: taId,
+        name: `${assignment.user.firstName} ${assignment.user.lastName}`,
+        currentHours: 0,
+        maxHours: 20, // Default max hours
+        courseCount: 0,
+        courses: [],
+      });
+    }
+    
+    const workload = taWorkloads.get(taId)!;
+    workload.currentHours += assignment.hoursPerWeek || 10;
+    workload.courseCount += 1;
+    workload.courses.push({
+      courseNumber: assignment.courseOffering?.course?.courseNumber || 'Unknown',
+      hoursPerWeek: assignment.hoursPerWeek || 10,
+    });
+  });
+
+  const workloadArray = Array.from(taWorkloads.values());
+  
+  const overloaded = workloadArray.filter(w => w.currentHours > w.maxHours).length;
+  const underutilized = workloadArray.filter(w => w.currentHours < w.maxHours * 0.5).length;
+  const totalUtilization = workloadArray.reduce((sum, w) => sum + (w.currentHours / w.maxHours), 0);
+  
+  const stats: WorkloadStats = {
+    totalTAs: workloadArray.length,
+    overloadedTAs: overloaded,
+    underutilizedTAs: underutilized,
+    averageUtilization: workloadArray.length > 0 ? (totalUtilization / workloadArray.length) * 100 : 0,
+    topWorkloads: workloadArray
+      .sort((a, b) => b.currentHours - a.currentHours)
+      .slice(0, 5),
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow">
+      <div className="px-6 py-4 border-b border-gray-200">
+        <h3 className="text-lg font-medium text-gray-900">TA Workload</h3>
+      </div>
+      
+      <div className="p-6 space-y-6">
+        {/* Summary Stats */}
+        <Suspense fallback={<WorkloadStatsSkeleton />}>
+          <WorkloadStats stats={stats} />
+        </Suspense>
+
+        {/* Average Utilization */}
+        <Suspense fallback={<UtilizationBarSkeleton />}>
+          <UtilizationBar utilization={stats.averageUtilization} />
+        </Suspense>
+
+        {/* Top Workloads */}
+        <Suspense fallback={<TopWorkloadsSkeleton />}>
+          <TopWorkloads workloads={stats.topWorkloads} />
+        </Suspense>
+
+        {/* Actions */}
+        <Suspense fallback={null}>
+          <WorkloadActions overloadedCount={stats.overloadedTAs} />
+        </Suspense>
+      </div>
+    </div>
+  );
+}

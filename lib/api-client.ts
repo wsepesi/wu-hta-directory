@@ -27,7 +27,7 @@ export class ApiClient {
         try {
           const errorData = await response.json();
           error = errorData.error || errorData.message || error;
-        } catch (e) {
+        } catch {
           // Failed to parse error response
         }
       }
@@ -37,14 +37,19 @@ export class ApiClient {
 
     if (contentType?.includes('application/json')) {
       try {
-        const data = await response.json();
-        return { data };
-      } catch (e) {
+        const jsonResponse = await response.json();
+        // If the response already has the ApiResponse shape, return it as-is
+        if (jsonResponse && typeof jsonResponse === 'object' && ('data' in jsonResponse || 'error' in jsonResponse)) {
+          return jsonResponse as ApiResponse<T>;
+        }
+        // Otherwise, wrap it in the ApiResponse format
+        return { data: jsonResponse as T };
+      } catch {
         return { error: 'Failed to parse JSON response' };
       }
     }
 
-    return { data: null as any };
+    return { data: null as T };
   }
 
   private async request<T>(
@@ -77,7 +82,7 @@ export class ApiClient {
 
   async post<T>(
     url: string,
-    data?: any,
+    data?: unknown,
     options?: RequestInit
   ): Promise<ApiResponse<T>> {
     return this.request<T>(url, {
@@ -89,7 +94,7 @@ export class ApiClient {
 
   async put<T>(
     url: string,
-    data?: any,
+    data?: unknown,
     options?: RequestInit
   ): Promise<ApiResponse<T>> {
     return this.request<T>(url, {
@@ -111,7 +116,7 @@ export class ApiClient {
 
   async patch<T>(
     url: string,
-    data?: any,
+    data?: unknown,
     options?: RequestInit
   ): Promise<ApiResponse<T>> {
     return this.request<T>(url, {

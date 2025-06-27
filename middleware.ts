@@ -1,7 +1,12 @@
-import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { env, config } from "@/lib/env";
+import { env, config as appConfig } from "./lib/env-validation";
+import { getToken } from "next-auth/jwt";
+
+// Extend NextRequest to include ip property
+interface NextRequestWithIP extends NextRequest {
+  ip?: string;
+}
 
 // Security headers configuration
 const securityHeaders = {
@@ -27,10 +32,10 @@ const productionHeaders = {
   "Content-Security-Policy": [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live",
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: https: blob:",
-    "font-src 'self'",
-    "connect-src 'self' https://vercel.live wss://ws.vercel.live",
+    "font-src 'self' https://fonts.gstatic.com",
+    "connect-src 'self' https://vercel.live wss://ws.vercel.live https://fonts.googleapis.com https://fonts.gstatic.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -39,7 +44,7 @@ const productionHeaders = {
 
 // CORS configuration
 function setCorsHeaders(response: NextResponse, origin: string | null) {
-  const allowedOrigins = config.cors.allowedOrigins;
+  const allowedOrigins = appConfig.cors.allowedOrigins;
   
   if (origin && allowedOrigins.includes(origin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
@@ -61,7 +66,7 @@ function setCorsHeaders(response: NextResponse, origin: string | null) {
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
 
 function checkRateLimit(ip: string): boolean {
-  if (config.rateLimit.enabled === false) {
+  if (appConfig.rateLimit.enabled === false) {
     return true;
   }
   
@@ -71,12 +76,12 @@ function checkRateLimit(ip: string): boolean {
   if (!limit || now > limit.resetTime) {
     requestCounts.set(ip, {
       count: 1,
-      resetTime: now + config.rateLimit.windowMs,
+      resetTime: now + appConfig.rateLimit.windowMs,
     });
     return true;
   }
   
-  if (limit.count >= config.rateLimit.maxRequests) {
+  if (limit.count >= appConfig.rateLimit.maxRequests) {
     return false;
   }
   
@@ -84,76 +89,116 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
+// Helper function to get client IP
+function getClientIP(req: NextRequest): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  const realIP = req.headers.get("x-real-ip");
+  const remoteAddr = req.headers.get("x-forwarded-host");
+  
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  if (realIP) {
+    return realIP.trim();
+  }
+  if (remoteAddr) {
+    return remoteAddr.trim();
+  }
+  return "unknown";
+}
+
 // Main middleware function
-export default withAuth(
-  async function middleware(req: NextRequest) {
-    const response = NextResponse.next();
-    const token = (req as any).nextauth?.token;
-    const path = req.nextUrl.pathname;
-    const origin = req.headers.get("origin");
-    const ip = req.ip || req.headers.get("x-forwarded-for") || "unknown";
-    
-    // Apply security headers
-    Object.entries(securityHeaders).forEach(([key, value]) => {
+export default async function middleware(req: NextRequestWithIP) {
+  const response = NextResponse.next();
+  const path = req.nextUrl.pathname;
+  const origin = req.headers.get("origin");
+  const ip = getClientIP(req);
+  const method = req.method;
+  
+  // Get the auth token using next-auth/jwt
+  const token = await getToken({ 
+    req, 
+    secret: env.NEXTAUTH_SECRET 
+  });
+  
+  // Apply security headers
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+  
+  // Apply production-only headers
+  if (env.NODE_ENV === "production") {
+    Object.entries(productionHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
+  }
+  
+  // Handle CORS for API routes
+  if (path.startsWith("/api/")) {
+    setCorsHeaders(response, origin);
     
-    // Apply production-only headers
-    if (env.NODE_ENV === "production") {
-      Object.entries(productionHeaders).forEach(([key, value]) => {
-        response.headers.set(key, value);
+    // Handle preflight requests
+    if (method === "OPTIONS") {
+      return new Response(null, { status: 200, headers: response.headers });
+    }
+    
+    // Check rate limiting for API routes
+    if (!checkRateLimit(ip)) {
+      return new Response("Too Many Requests", {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil(appConfig.rateLimit.windowMs / 1000)),
+        },
       });
     }
     
-    // Handle CORS for API routes
-    if (path.startsWith("/api/")) {
-      setCorsHeaders(response, origin);
-      
-      // Handle preflight requests
-      if (req.method === "OPTIONS") {
-        return new Response(null, { status: 200, headers: response.headers });
-      }
-      
-      // Check rate limiting for API routes
-      if (!checkRateLimit(ip)) {
-        return new Response("Too Many Requests", {
-          status: 429,
-          headers: {
-            "Retry-After": String(Math.ceil(config.rateLimit.windowMs / 1000)),
-          },
-        });
-      }
-    }
+    // Protect API mutations (POST, PUT, DELETE) - require authentication
+    // GET requests are allowed without authentication for public browsing
+    // Exclude auth endpoints and invitation validation from authentication requirements
+    const publicApiPaths = [
+      "/api/auth/",
+      "/api/invitations/validate",
+      "/api/health"
+    ];
     
-    // Admin routes protection
-    if (path.startsWith("/admin")) {
-      if (!token || token.role !== "admin") {
-        return NextResponse.redirect(new URL("/unauthorized", req.url));
-      }
-    }
+    const isPublicApi = publicApiPaths.some(publicPath => path.startsWith(publicPath));
+    const isMutation = method === "POST" || method === "PUT" || method === "DELETE" || method === "PATCH";
     
-    // Protected routes for authenticated users
-    if (path.startsWith("/dashboard") || path.startsWith("/profile") || path.startsWith("/manage")) {
+    if (isMutation && !isPublicApi) {
       if (!token) {
-        const url = new URL("/auth/login", req.url);
-        url.searchParams.set("callbackUrl", req.url);
-        return NextResponse.redirect(url);
+        return new Response("Unauthorized", { status: 401 });
       }
     }
     
-    // Add request ID for tracking
-    response.headers.set("X-Request-ID", crypto.randomUUID());
-    
-    return response;
-  },
-  {
-    callbacks: {
-      authorized: () => true, // Let the middleware function handle authorization
-    },
+    // Admin API routes require admin role for all methods
+    if (path.startsWith("/api/admin/")) {
+      if (!token || token.role !== "admin") {
+        return new Response("Forbidden", { status: 403 });
+      }
+    }
   }
-);
+  
+  // Admin routes protection - still require admin role
+  if (path.startsWith("/admin")) {
+    if (!token || token.role !== "admin") {
+      return NextResponse.redirect(new URL("/unauthorized", req.url));
+    }
+  }
+  
+  // Authentication Strategy:
+  // - All regular pages (courses, directory, people, etc.) are publicly accessible
+  // - Admin routes (/admin/*) require admin role and redirect to /unauthorized
+  // - API mutations (POST/PUT/DELETE) require authentication except for public endpoints
+  // - Public API endpoints: auth routes, invitation validation, health checks
+  // - No authentication redirects for regular pages - users can browse freely
+  
+  // Add request ID for tracking
+  response.headers.set("X-Request-ID", crypto.randomUUID());
+  
+  return response;
+}
 
-// Update matcher configuration
+// Middleware configuration for Next.js
 export const config = {
   matcher: [
     /*
@@ -171,7 +216,8 @@ export const config = {
 if (typeof globalThis.setInterval !== "undefined") {
   setInterval(() => {
     const now = Date.now();
-    for (const [ip, limit] of requestCounts.entries()) {
+    const entries = Array.from(requestCounts.entries());
+    for (const [ip, limit] of entries) {
       if (now > limit.resetTime) {
         requestCounts.delete(ip);
       }

@@ -48,12 +48,6 @@ const envSchema = z.object({
   ALLOWED_IMAGE_TYPES: z.string().default('image/jpeg,image/png,image/webp'),
   UPLOAD_DIR: z.string().default('./public/uploads'),
   
-  // Analytics & Monitoring
-  SENTRY_DSN: z.string().optional(),
-  SENTRY_ENVIRONMENT: z.string().default('development'),
-  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
-  LOGROCKET_PROJECT_ID: z.string().optional(),
-  
   // External APIs
   UNIVERSITY_API_URL: z.string().url().optional(),
   UNIVERSITY_API_KEY: z.string().optional(),
@@ -86,6 +80,19 @@ function validateEnv() {
       error.errors.forEach(err => {
         console.error(`  ${err.path.join('.')}: ${err.message}`);
       });
+      
+      // In development, continue with defaults instead of crashing
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Using fallback values for development');
+        return envSchema.parse({
+          ...process.env,
+          NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+          NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'development-secret-key-min-32-chars-long-for-security-purposes',
+          POSTGRES_URL: process.env.POSTGRES_URL || 'postgresql://localhost:5432/wu-head-tas',
+          POSTGRES_URL_NON_POOLING: process.env.POSTGRES_URL_NON_POOLING || 'postgresql://localhost:5432/wu-head-tas',
+        });
+      }
+      
       throw new Error('Invalid environment configuration');
     }
     throw error;
@@ -94,6 +101,9 @@ function validateEnv() {
 
 // Export validated environment variables
 export const env = validateEnv();
+
+// Re-export as env-validation for better naming
+export { env as envValidation };
 
 // Environment-specific configurations
 export const config = {

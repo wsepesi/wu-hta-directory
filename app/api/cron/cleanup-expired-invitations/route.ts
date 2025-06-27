@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { invitations } from '@/lib/db/schema';
-import { lt, and, eq } from 'drizzle-orm';
+import { lt, and, isNull } from 'drizzle-orm';
 import { env } from '@/lib/env';
-import { monitoring } from '@/lib/monitoring';
 
 // Verify cron secret to prevent unauthorized access
 function verifyCronSecret(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization');
   
   // In Vercel, cron jobs are automatically authenticated
   // For manual testing, check for a secret
@@ -30,7 +28,6 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    const transactionId = monitoring.startTransaction('cron.cleanup-invitations');
     
     // Calculate expiry date
     const expiryDate = new Date();
@@ -42,26 +39,13 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           lt(invitations.createdAt, expiryDate),
-          eq(invitations.used, false)
+          isNull(invitations.usedAt)
         )
       )
-      .returning({ id: invitations.id });
+      .returning();
     
     const deletedCount = result.length;
     
-    // Log the cleanup
-    monitoring.captureMessage(
-      `Cleaned up ${deletedCount} expired invitations`,
-      monitoring.ErrorSeverity.INFO,
-      {
-        extra: {
-          deletedCount,
-          expiryDate: expiryDate.toISOString(),
-        },
-      }
-    );
-    
-    monitoring.finishTransaction(transactionId, 'ok', { deletedCount });
     
     return NextResponse.json({
       success: true,
@@ -72,9 +56,6 @@ export async function GET(request: NextRequest) {
     });
     
   } catch (error) {
-    monitoring.captureException(error, {
-      tags: { cron: 'cleanup-invitations' },
-    });
     
     return NextResponse.json(
       {

@@ -10,7 +10,6 @@ CREATE INDEX IF NOT EXISTS idx_users_name ON users(first_name, last_name);
 
 -- Courses table indexes
 CREATE INDEX IF NOT EXISTS idx_courses_course_number ON courses(course_number);
-CREATE INDEX IF NOT EXISTS idx_courses_offering_pattern ON courses(offering_pattern);
 CREATE INDEX IF NOT EXISTS idx_courses_name ON courses(course_name);
 
 -- Professors table indexes

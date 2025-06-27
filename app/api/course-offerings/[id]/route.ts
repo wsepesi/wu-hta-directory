@@ -15,14 +15,7 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' } as ApiResponse<never>,
-        { status: 401 }
-      );
-    }
+    // Public endpoint - no authentication required for GET
 
     const { id } = await params;
 

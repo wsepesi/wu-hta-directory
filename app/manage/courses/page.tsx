@@ -1,11 +1,10 @@
 import { Metadata } from "next";
-import { requireAuth } from "@/lib/auth-utils";
 import Link from "next/link";
 import { courseRepository } from "@/lib/repositories/courses";
-import { courseOfferingRepository } from "@/lib/repositories/course-offerings";
 import { professorRepository } from "@/lib/repositories/professors";
-import { taAssignmentRepository } from "@/lib/repositories/ta-assignments";
-import { CourseManagement } from "@/components/course/CourseManagement";
+import { CourseManagementWrapper } from "@/components/course/CourseManagementWrapper";
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: "Manage Courses - WU Head TA Directory",
@@ -13,30 +12,15 @@ export const metadata: Metadata = {
 };
 
 export default async function ManageCoursesPage() {
-  await requireAuth();
+  // Remove requireAuth to allow public access to the page
+  // The CourseManagementWrapper will handle auth checks
 
-  const courses = await courseRepository.findAll();
-  const professors = await professorRepository.findAll();
-  
-  // Get course offerings with details
-  const coursesWithOfferings = await Promise.all(
-    courses.map(async (course) => {
-      const offerings = await courseOfferingRepository.findByCourseId(course.id);
-      const offeringsWithDetails = await Promise.all(
-        offerings.map(async (offering) => {
-          const taAssignments = await taAssignmentRepository.findByCourseOfferingId(offering.id);
-          return {
-            ...offering,
-            taCount: taAssignments.length,
-          };
-        })
-      );
-      return {
-        ...course,
-        offerings: offeringsWithDetails,
-      };
-    })
-  );
+  // Fetch data in parallel to improve performance
+  const [courses, professors, coursesWithOfferings] = await Promise.all([
+    courseRepository.findAll(),
+    professorRepository.findAll(),
+    courseRepository.findAllWithOfferingsAndTACounts()
+  ]);
 
   // Get current and upcoming semesters
   const currentYear = new Date().getFullYear();
@@ -66,7 +50,7 @@ export default async function ManageCoursesPage() {
           </p>
         </div>
 
-        <CourseManagement
+        <CourseManagementWrapper
           initialCourses={courses}
           initialProfessors={professors}
           coursesWithOfferings={coursesWithOfferings}

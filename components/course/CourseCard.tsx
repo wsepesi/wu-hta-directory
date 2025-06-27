@@ -47,7 +47,7 @@ export function CourseCard({
   showActions = false,
   className 
 }: CourseCardProps) {
-  const needsTAs = course.tas.length < course.maxTAs;
+  const missingHTARecord = course.tas.length < course.maxTAs;
   const taSlotsFilled = course.tas.length;
   const taSlotsTotal = course.maxTAs;
 
@@ -62,9 +62,9 @@ export function CourseCard({
             </div>
             <BodyText className="text-lg font-medium">{course.name}</BodyText>
           </div>
-          {needsTAs && (
+          {missingHTARecord && (
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-              Needs TAs
+              No Head TA Recorded
             </span>
           )}
         </div>
@@ -109,7 +109,7 @@ export function CourseCard({
               <span className="text-sm font-semibold text-charcoal">TAs: </span>
               <span className={clsx(
                 "text-sm",
-                needsTAs ? "text-yellow-600 font-medium" : "text-gray-600"
+                missingHTARecord ? "text-yellow-600 font-medium" : "text-gray-600"
               )}>
                 {taSlotsFilled}/{taSlotsTotal} slots filled
               </span>
@@ -127,7 +127,7 @@ export function CourseCard({
               </div>
             ) : (
               <BodyText className="text-sm text-gray-500">
-                No TAs assigned yet
+                No HTAs recorded yet
               </BodyText>
             )}
           </div>
@@ -160,7 +160,7 @@ export function CourseCard({
                 }}
                 className="flex-1"
               >
-                Manage TAs
+                Manage HTAs
               </Button>
             )}
           </div>

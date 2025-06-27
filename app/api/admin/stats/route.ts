@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { userRepository } from '@/lib/repositories/users';
 import { courseRepository } from '@/lib/repositories/courses';
 import { professorRepository } from '@/lib/repositories/professors';
-import { taAssignmentRepository } from '@/lib/repositories/ta-assignments';
+import { taAssignmentRepository } from '@/lib/repositories/hta-records';
 import { invitationRepository } from '@/lib/repositories/invitations';
 import { db } from '@/lib/db';
 import { users, taAssignments, sessions } from '@/lib/db/schema';
-import { eq, sql, gte, and, gt } from 'drizzle-orm';
-import type { ApiResponse, AdminStats } from '@/lib/types';
+import { sql, gte, and, isNotNull } from 'drizzle-orm';
+import type { ApiResponse } from '@/lib/types';
 
 // Helper function to calculate growth percentage
 function calculateGrowth(previous: number, current: number) {
@@ -27,7 +27,7 @@ function calculateGrowth(previous: number, current: number) {
  * GET /api/admin/stats
  * Get admin dashboard statistics (admin only)
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Check authentication and admin role
     const session = await getServerSession(authOptions);
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
         count: sql<number>`count(*)::int`,
       })
       .from(users)
-      .where(users.gradYear !== null)
+      .where(isNotNull(users.gradYear))
       .groupBy(users.gradYear)
       .orderBy(users.gradYear);
 
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
         count: sql<number>`count(*)::int`,
       })
       .from(users)
-      .where(users.location !== null)
+      .where(isNotNull(users.location))
       .groupBy(users.location)
       .orderBy(users.location);
 

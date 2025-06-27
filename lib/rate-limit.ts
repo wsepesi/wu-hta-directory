@@ -1,4 +1,3 @@
-// @ts-ignore - LRU Cache v11 has built-in types
 import { LRUCache } from 'lru-cache';
 
 export type RateLimitOptions = {

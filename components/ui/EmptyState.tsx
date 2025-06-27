@@ -43,7 +43,7 @@ export function EmptyState({
 
   const defaultIcon = (
     <svg
-      className={clsx(iconSizeStyles[size], 'text-gray-400')}
+      className={clsx(iconSizeStyles[size], 'text-charcoal/40')}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -68,11 +68,11 @@ export function EmptyState({
       <div className="mx-auto flex items-center justify-center mb-4">
         {icon || defaultIcon}
       </div>
-      <h3 className={clsx('font-medium text-gray-900 mb-2', titleSizeStyles[size])}>
+      <h3 className={clsx('font-serif text-charcoal mb-2', titleSizeStyles[size])}>
         {title}
       </h3>
       {description && (
-        <p className="text-gray-500 max-w-md mx-auto mb-6">
+        <p className="text-charcoal/60 font-serif max-w-md mx-auto mb-6">
           {description}
         </p>
       )}

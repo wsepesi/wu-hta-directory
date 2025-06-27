@@ -16,10 +16,10 @@ INSERT INTO users (
     updated_at
 ) VALUES (
     gen_random_uuid(),
-    'admin@university.edu', -- Replace with your admin email
-    '$2a$10$YourBcryptHashHere', -- Replace with bcrypt hash of your password
-    'Admin', -- Replace with admin first name
-    'User', -- Replace with admin last name
+    'sepesi.w@wustl.edu', -- Replace with your admin email
+    '', -- Replace with bcrypt hash of your password
+    'William', -- Replace with admin first name
+    'Sepesi', -- Replace with admin last name
     'admin',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP

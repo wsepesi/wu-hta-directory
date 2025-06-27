@@ -1,12 +1,13 @@
-import { eq, and, or, desc, asc, like } from 'drizzle-orm';
+import { eq, or, asc, like, count, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { courses } from '@/lib/db/schema';
+import { courses, courseOfferings, taAssignments } from '@/lib/db/schema';
 import { cache, cacheKeys, cacheTTL } from '@/lib/cache';
+import { withTimeoutFallback } from '@/lib/db/query-timeout';
 import type {
   Course,
   CourseWithRelations,
   CreateCourseInput,
-  CourseFilters,
+  CourseOffering,
 } from '@/lib/types';
 
 export class CourseRepository {
@@ -59,19 +60,19 @@ export class CourseRepository {
   /**
    * Find all courses with optional filters
    */
-  async findAll(filters?: CourseFilters): Promise<Course[]> {
+  async findAll(): Promise<Course[]> {
     try {
-      let query = db.select().from(courses);
+      const queryBuilder = db.select().from(courses);
       
-      if (filters?.offeringPattern) {
-        query = query.where(eq(courses.offeringPattern, filters.offeringPattern));
-      }
+      // Remove offeringPattern filter - will be determined by actual offerings
       
-      const result = await query.orderBy(asc(courses.courseNumber));
+      const query = queryBuilder.orderBy(asc(courses.courseNumber));
+      const result = await withTimeoutFallback(query, [], 5000, 'CourseRepository.findAll');
+      
       return result;
     } catch (error) {
       console.error('Error finding all courses:', error);
-      throw new Error('Failed to find courses');
+      return []; // Return empty array instead of throwing
     }
   }
 
@@ -172,7 +173,9 @@ export class CourseRepository {
         },
       });
       
-      return result || null;
+      if (!result) return null;
+      
+      return result as CourseWithRelations;
     } catch (error) {
       console.error('Error finding course with relations:', error);
       throw new Error('Failed to find course');
@@ -186,7 +189,7 @@ export class CourseRepository {
     try {
       const searchTerm = `%${query.toLowerCase()}%`;
       
-      const result = await db.select()
+      const searchQuery = db.select()
         .from(courses)
         .where(
           or(
@@ -197,48 +200,33 @@ export class CourseRepository {
         .orderBy(asc(courses.courseNumber))
         .limit(50);
       
+      const result = await withTimeoutFallback(searchQuery, [], 5000, 'CourseRepository.search');
+      
       return result;
     } catch (error) {
       console.error('Error searching courses:', error);
-      throw new Error('Failed to search courses');
+      return []; // Return empty array instead of throwing
     }
   }
 
   /**
    * Count courses by filters
    */
-  async count(filters?: CourseFilters): Promise<number> {
+  async count(): Promise<number> {
     try {
-      let query = db.select({ count: courses.id }).from(courses);
+      const queryBuilder = db.select({ count: count() }).from(courses);
       
-      if (filters?.offeringPattern) {
-        query = query.where(eq(courses.offeringPattern, filters.offeringPattern));
-      }
+      // Remove offeringPattern filter - will be determined by actual offerings
       
-      const result = await query;
-      return result.length;
+      const result = await queryBuilder;
+      return Number(result[0]?.count) || 0;
     } catch (error) {
       console.error('Error counting courses:', error);
       throw new Error('Failed to count courses');
     }
   }
 
-  /**
-   * Find courses by offering pattern
-   */
-  async findByOfferingPattern(pattern: 'both' | 'fall_only' | 'spring_only' | 'sparse'): Promise<Course[]> {
-    try {
-      const result = await db.select()
-        .from(courses)
-        .where(eq(courses.offeringPattern, pattern))
-        .orderBy(asc(courses.courseNumber));
-      
-      return result;
-    } catch (error) {
-      console.error('Error finding courses by offering pattern:', error);
-      throw new Error('Failed to find courses');
-    }
-  }
+  // Removed findByOfferingPattern - offering patterns should be determined from actual offerings
 
   /**
    * Batch create courses
@@ -256,6 +244,88 @@ export class CourseRepository {
         throw new Error('One or more courses already exist');
       }
       throw new Error('Failed to create courses');
+    }
+  }
+
+  /**
+   * Find all courses with their offerings and TA counts in a single optimized query
+   */
+  async findAllWithOfferingsAndTACounts(): Promise<Array<Course & { offerings: Array<CourseOffering & { taCount: number }> }>> {
+    try {
+      // First, get all courses with their offerings in one query
+      const coursesWithOfferings = await db
+        .select({
+          courseId: courses.id,
+          courseNumber: courses.courseNumber,
+          courseName: courses.courseName,
+          courseCreatedAt: courses.createdAt,
+          offeringId: courseOfferings.id,
+          offeringProfessorId: courseOfferings.professorId,
+          offeringSemester: courseOfferings.semester,
+          offeringYear: courseOfferings.year,
+          offeringSeason: courseOfferings.season,
+          offeringCreatedAt: courseOfferings.createdAt,
+        })
+        .from(courses)
+        .leftJoin(courseOfferings, eq(courses.id, courseOfferings.courseId))
+        .orderBy(asc(courses.courseNumber));
+
+      // Get TA counts for all offerings in one query
+      const offeringIds = coursesWithOfferings
+        .filter(row => row.offeringId !== null)
+        .map(row => row.offeringId as string);
+
+      let taCounts: Record<string, number> = {};
+      if (offeringIds.length > 0) {
+        const taCountResults = await db
+          .select({
+            courseOfferingId: taAssignments.courseOfferingId,
+            count: count()
+          })
+          .from(taAssignments)
+          .where(sql`${taAssignments.courseOfferingId} IN (${sql.join(offeringIds.map(id => sql`${id}`), sql`, `)})`)
+          .groupBy(taAssignments.courseOfferingId);
+
+        taCounts = Object.fromEntries(
+          taCountResults.map(row => [row.courseOfferingId, Number(row.count)])
+        );
+      }
+
+      // Group results by course
+      const courseMap = new Map<string, Course & { offerings: Array<CourseOffering & { taCount: number }> }>();
+      
+      for (const row of coursesWithOfferings) {
+        if (!courseMap.has(row.courseId)) {
+          courseMap.set(row.courseId, {
+            id: row.courseId,
+            courseNumber: row.courseNumber,
+            courseName: row.courseName,
+            createdAt: row.courseCreatedAt,
+            offerings: []
+          });
+        }
+
+        if (row.offeringId && row.offeringSemester && row.offeringYear && row.offeringSeason && row.offeringCreatedAt) {
+          const course = courseMap.get(row.courseId);
+          if (course) {
+            course.offerings.push({
+              id: row.offeringId,
+              courseId: row.courseId,
+              professorId: row.offeringProfessorId ?? undefined,
+              semester: row.offeringSemester,
+              year: row.offeringYear,
+              season: row.offeringSeason as 'Fall' | 'Spring',
+              createdAt: row.offeringCreatedAt,
+              taCount: taCounts[row.offeringId] || 0
+            });
+          }
+        }
+      }
+
+      return Array.from(courseMap.values());
+    } catch (error) {
+      console.error('Error finding courses with offerings and TA counts:', error);
+      throw new Error('Failed to find courses with details');
     }
   }
 }

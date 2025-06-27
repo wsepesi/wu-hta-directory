@@ -18,7 +18,7 @@ CREATE TABLE users (
     last_name VARCHAR(100) NOT NULL,
     grad_year INTEGER,
     degree_program VARCHAR(255),
-    current_role VARCHAR(255),
+    "current_role" VARCHAR(255),
     linkedin_url TEXT,
     personal_site TEXT,
     location VARCHAR(255),
@@ -33,8 +33,6 @@ CREATE TABLE courses (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     course_number VARCHAR(20) NOT NULL UNIQUE,
     course_name VARCHAR(255) NOT NULL,
-    offering_pattern VARCHAR(20) NOT NULL DEFAULT 'both' 
-        CHECK (offering_pattern IN ('both', 'fall_only', 'spring_only', 'sparse')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 

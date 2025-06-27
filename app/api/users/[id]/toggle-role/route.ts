@@ -6,7 +6,7 @@ import { logAuditEvent } from "@/lib/audit-logger";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -19,9 +19,10 @@ export async function POST(
     }
 
     const { role: requestedRole } = await request.json();
+    const resolvedParams = await params;
 
     // Prevent admins from removing their own admin role
-    if (params.id === session.user.id && requestedRole !== "admin") {
+    if (resolvedParams.id === session.user.id && requestedRole !== "admin") {
       return NextResponse.json(
         { error: "Cannot remove your own admin role" },
         { status: 400 }
@@ -29,7 +30,7 @@ export async function POST(
     }
 
     // Get the user
-    const user = await userRepository.findById(params.id);
+    const user = await userRepository.findById(resolvedParams.id);
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -50,14 +51,14 @@ export async function POST(
 
     // Update the role
     const oldRole = user.role;
-    const updatedUser = await userRepository.update(params.id, { role: newRole });
+    const updatedUser = await userRepository.update(resolvedParams.id, { role: newRole });
 
     // Log the audit event
     await logAuditEvent({
       userId: session.user.id,
       action: "USER_ROLE_CHANGED",
       entityType: "user",
-      entityId: params.id,
+      entityId: resolvedParams.id,
       metadata: {
         userName: `${user.firstName} ${user.lastName}`,
         oldRole,

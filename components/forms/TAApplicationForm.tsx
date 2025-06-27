@@ -54,7 +54,7 @@ export function TAApplicationForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const updateField = (field: keyof TAApplicationData, value: any) => {
+  const updateField = (field: keyof TAApplicationData, value: string | string[] | File) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
@@ -225,7 +225,7 @@ export function TAApplicationForm({
         <CardHeader>
           <SerifHeading className="text-xl">Course Preferences</SerifHeading>
           <BodyText className="text-sm text-gray-600 mt-1">
-            Select all courses you're interested in TAing
+            Select all courses you&apos;re interested in TAing
           </BodyText>
         </CardHeader>
         <CardBody>

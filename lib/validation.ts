@@ -23,9 +23,8 @@ export const courseSchema = z.object({
   courseNumber: z.string()
     .min(1, 'Course number is required')
     .max(20)
-    .regex(/^[A-Z0-9]+\.?[A-Z0-9]*$/, 'Invalid course number format'),
+    .regex(/^\d+[A-Z]?$/, 'Invalid course number format. Use formats like 131 or 417T'),
   courseName: z.string().min(1, 'Course name is required').max(255),
-  offeringPattern: z.enum(['both', 'fall', 'spring', 'alternating', 'irregular']),
 });
 
 // Professor validation schemas
@@ -116,12 +115,10 @@ export function isAcademicEmail(email: string): boolean {
 
 // Course number validation helpers
 export function isValidCourseNumber(courseNumber: string): boolean {
-  // MIT-style course numbers: 6.1200, 18.06, etc.
-  const mitPattern = /^\d+\.\d+[A-Z]?$/;
-  // Generic pattern: CS50, MATH101, etc.
-  const genericPattern = /^[A-Z]+\d+[A-Z]?$/;
+  // CSE course numbers: 131, 417T, etc.
+  const pattern = /^\d+[A-Z]?$/;
   
-  return mitPattern.test(courseNumber) || genericPattern.test(courseNumber);
+  return pattern.test(courseNumber);
 }
 
 // Date validation helpers

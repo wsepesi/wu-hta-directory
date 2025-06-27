@@ -1,34 +1,35 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Crimson_Text } from "next/font/google";
 import "./globals.css";
 import SessionProvider from "@/components/providers/session-provider";
 import { ToastContainer } from "@/components/ui/EnhancedToast";
+import { ResourceHints } from "@/components/layout/ResourceHints";
+import { NavigationWrapper } from "@/components/navigation/NavigationWrapper";
+import { NavigationProgress } from "@/components/navigation/NavigationProgress";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const crimsonText = Crimson_Text({
+  variable: "--font-crimson-text",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
   title: "Head TA Directory",
   description: "Washington University Head TA Directory",
   manifest: "/manifest.json",
-  themeColor: "#2C2C2C",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "WU Head TAs",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#2C2C2C",
 };
 
 export default function RootLayout({
@@ -37,12 +38,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={crimsonText.variable}>
+      <head>
+        <ResourceHints />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className="font-serif antialiased"
       >
+        <NavigationProgress />
         <SessionProvider>
-          {children}
+          <NavigationWrapper>
+            {children}
+          </NavigationWrapper>
           <ToastContainer />
         </SessionProvider>
         <script

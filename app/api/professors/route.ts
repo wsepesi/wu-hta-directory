@@ -11,14 +11,7 @@ import type { ApiResponse, Professor, CreateProfessorInput } from '@/lib/types';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' } as ApiResponse<never>,
-        { status: 401 }
-      );
-    }
+    // Public endpoint - no authentication required for GET
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;

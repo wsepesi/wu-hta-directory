@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { Card } from '@/components/ui/Card';
 import { useCourseOfferings } from '@/hooks/useCourses';
@@ -23,34 +22,19 @@ export function SemesterPlanning({
   targetYear,
   targetSeason,
 }: SemesterPlanningProps) {
-  const { createOffering, loading, error } = useCourseOfferings();
+  const { createOffering, error } = useCourseOfferings();
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Get courses that should be offered based on their pattern
+  // Get courses that haven't been offered this semester yet
   const getSuggestedCourses = () => {
     return courses.filter(course => {
       // Check if already offered this semester
       const alreadyOffered = currentOfferings.some(
         o => o.courseId === course.id && o.semester === targetSemester
       );
-      if (alreadyOffered) return false;
-
-      // Check offering pattern
-      switch (course.offeringPattern) {
-        case 'both':
-          return true;
-        case 'fall_only':
-          return targetSeason === 'Fall';
-        case 'spring_only':
-          return targetSeason === 'Spring';
-        case 'sparse':
-          // For sparse courses, suggest based on history
-          return false; // Would need to implement historical analysis
-        default:
-          return false;
-      }
+      return !alreadyOffered;
     });
   };
 
@@ -143,7 +127,7 @@ export function SemesterPlanning({
           </div>
 
           <p className="text-sm text-gray-600 mb-4">
-            Based on offering patterns, {suggestedCourses.length} courses should be offered in {targetSemester}.
+            {suggestedCourses.length} courses have not been scheduled for {targetSemester} yet.
             Select the courses you want to create offerings for:
           </p>
 
@@ -177,14 +161,6 @@ export function SemesterPlanning({
                       <p className="text-sm font-medium text-gray-900">
                         {course.courseNumber}: {course.courseName}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        Pattern: {
-                          course.offeringPattern === 'both' ? 'Fall & Spring' :
-                          course.offeringPattern === 'fall_only' ? 'Fall Only' :
-                          course.offeringPattern === 'spring_only' ? 'Spring Only' :
-                          'Occasionally Offered'
-                        }
-                      </p>
                     </div>
                   </label>
                 ))}
@@ -195,14 +171,10 @@ export function SemesterPlanning({
                   onClick={handleCreateOfferings}
                   disabled={creating || selectedCourses.length === 0}
                 >
-                  {creating ? (
-                    <>
-                      <LoadingSpinner size="sm" className="mr-2" />
-                      Creating Offerings...
-                    </>
-                  ) : (
+                  {creating ? 
+                    'Creating Offerings...' : 
                     `Create ${selectedCourses.length} Offering${selectedCourses.length !== 1 ? 's' : ''}`
-                  )}
+                  }
                 </Button>
               </div>
             </>

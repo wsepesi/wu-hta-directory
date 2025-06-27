@@ -1,5 +1,14 @@
 import { Metadata } from "next";
-import PublicDirectoryClient from "./PublicDirectoryClient";
+import { Suspense } from "react";
+import CleanLayout, { CleanPageHeader } from "@/components/layout/CleanLayout";
+import Link from "next/link";
+import { getPublicDirectory, getDirectoryStats } from "@/lib/public-directory";
+import DirectoryFilters from "@/components/directory/DirectoryFilters";
+import DirectoryResults from "@/components/directory/DirectoryResults";
+import { DirectoryFiltersSkeleton } from "@/components/directory/DirectoryFiltersSkeleton";
+import { DirectoryResultsSkeleton } from "@/components/directory/DirectoryResultsSkeleton";
+import { DirectoryStats } from "@/components/directory/DirectoryStats";
+import { DirectoryStatsSkeleton } from "@/components/directory/DirectoryStatsSkeleton";
 
 export const metadata: Metadata = {
   title: "Public Directory - WU Head TA Directory",
@@ -11,82 +20,121 @@ export const metadata: Metadata = {
   },
 };
 
+export const dynamic = 'force-dynamic';
+
 interface SearchParams {
-  searchParams?: {
+  searchParams?: Promise<{
     search?: string;
     gradYear?: string;
     location?: string;
     page?: string;
-  };
+  }>;
+}
+
+// Server component for directory statistics
+async function DirectoryStatsSection() {
+  const [stats, directory] = await Promise.all([
+    getDirectoryStats(),
+    getPublicDirectory({ limit: 1000 }) // Get all users for count
+  ]);
+  
+  return (
+    <DirectoryStats
+      totalUsers={directory.length}
+      totalLocations={stats.locations.length}
+      totalGradYears={stats.gradYears.length}
+    />
+  );
+}
+
+// Server component for fetching and displaying filters
+async function DirectoryFiltersSection({ searchParams }: { searchParams?: {
+  search?: string;
+  gradYear?: string;
+  location?: string;
+  page?: string;
+} }) {
+  const stats = await getDirectoryStats();
+  
+  return (
+    <DirectoryFilters
+      availableFilters={{
+        gradYears: stats.gradYears || [],
+        locations: stats.locations || [],
+      }}
+      searchParams={searchParams}
+    />
+  );
+}
+
+// Server component for fetching and displaying results
+async function DirectoryResultsSection({ searchParams }: { searchParams?: {
+  search?: string;
+  gradYear?: string;
+  location?: string;
+  page?: string;
+} }) {
+  const directory = await getPublicDirectory({
+    search: searchParams?.search,
+    gradYear: searchParams?.gradYear ? parseInt(searchParams.gradYear) : undefined,
+    location: searchParams?.location,
+  });
+
+  return (
+    <DirectoryResults
+      data={directory}
+      searchParams={searchParams}
+    />
+  );
 }
 
 export default async function PublicDirectoryPage({ searchParams }: SearchParams) {
-  // Fetch initial data from API
-  const params = new URLSearchParams();
-  if (searchParams?.search) params.append("search", searchParams.search);
-  if (searchParams?.gradYear) params.append("gradYear", searchParams.gradYear);
-  if (searchParams?.location) params.append("location", searchParams.location);
-
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/directory?${params}`,
-    { cache: "no-store" }
-  );
-
-  const data = await response.json();
-  const directory = data.data || [];
-
-  // Get stats for filters
-  const statsResponse = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/directory/stats`,
-    { cache: "no-store" }
-  );
+  const resolvedSearchParams = await searchParams;
   
-  const statsData = await statsResponse.json();
-  const stats = statsData.data || { locations: [], gradYears: [] };
-
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-gray-900">
-            Head TA Public Directory
-          </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Washington University Computer Science Head Teaching Assistants
-          </p>
-        </div>
+    <CleanLayout maxWidth="6xl" center>
+      <CleanPageHeader
+        title="Head TA Directory"
+        subtitle="Washington University Computer Science Head Teaching Assistants"
+        description="Browse our directory of head teaching assistants. For full access to contact information and additional features, please sign in."
+      />
 
-        <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <div className="text-sm text-gray-600">
-            <p>
-              This is a public directory of head teaching assistants in the Washington University
-              Computer Science department. For full access to contact information and additional
-              features, please sign in.
-            </p>
-          </div>
-        </div>
+      <div className="space-y-6">
+        {/* Stats load independently */}
+        <Suspense fallback={<DirectoryStatsSkeleton />}>
+          <DirectoryStatsSection />
+        </Suspense>
 
-        <PublicDirectoryClient
-          initialData={directory}
-          availableFilters={{
-            gradYears: stats.gradYears || [],
-            locations: stats.locations || [],
-          }}
-          searchParams={searchParams}
-        />
+        {/* Filters load independently */}
+        <Suspense fallback={<DirectoryFiltersSkeleton />}>
+          <DirectoryFiltersSection searchParams={resolvedSearchParams} />
+        </Suspense>
 
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-600 mb-4">
-            Are you a head TA? Join the directory to connect with fellow TAs.
-          </p>
-          <a
-            href="/auth/login"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+        {/* Results load independently */}
+        <Suspense fallback={<DirectoryResultsSkeleton />}>
+          <DirectoryResultsSection searchParams={resolvedSearchParams} />
+        </Suspense>
+      </div>
+
+      <div className="mt-16 font-serif text-charcoal space-y-6">
+        <p className="text-lg">
+          Are you a head TA? Join the directory to connect with fellow TAs.
+        </p>
+        <nav className="font-serif space-y-4 sm:space-y-0 sm:space-x-12 sm:flex sm:justify-center">
+          <Link
+            href="/auth/signin"
+            className="text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200"
           >
             Sign In
-          </a>
-        </div>
+          </Link>
+          <Link
+            href="/"
+            className="text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200"
+          >
+            Back to Home
+          </Link>
+        </nav>
       </div>
-    </div>
+    </CleanLayout>
   );
 }

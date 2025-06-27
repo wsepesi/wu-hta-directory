@@ -1,19 +1,39 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { ProgressiveAuthForm } from "@/components/auth/ProgressiveAuthForm";
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  
+  // Handle server-side responses
+  useEffect(() => {
+    const serverSuccess = searchParams.get('success');
+    const serverError = searchParams.get('error');
+    const serverEmail = searchParams.get('email');
+    
+    if (serverSuccess === 'reset_email_sent' && serverEmail) {
+      setSuccess(true);
+      setEmail(serverEmail);
+    }
+    
+    if (serverError) {
+      setError(serverError);
+    }
+    
+    if (serverEmail && !success) {
+      setEmail(serverEmail);
+    }
+  }, [searchParams, success]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +54,7 @@ export default function ForgotPasswordPage() {
       } else {
         setError(data.error || "Failed to send reset email");
       }
-    } catch (error) {
+    } catch {
       setError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
@@ -79,21 +99,29 @@ export default function ForgotPasswordPage() {
           Forgot your password?
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Enter your email and we'll send you a link to reset your password.
+          Enter your email and we&apos;ll send you a link to reset your password.
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <ProgressiveAuthForm 
+            className="space-y-6" 
+            fallbackAction="/api/auth/forgot-password-action"
+            method="POST"
+            enhancedOnSubmit={handleSubmit}
+          >
             <Input
               label="Email address"
+              name="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@wustl.edu"
               required
               disabled={isLoading}
+              pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
+              title="Please enter a valid email address"
             />
 
             {error && (
@@ -109,7 +137,7 @@ export default function ForgotPasswordPage() {
               disabled={isLoading}
               className="w-full"
             >
-              {isLoading ? <LoadingSpinner size="sm" className="mx-auto" /> : "Send reset link"}
+              {isLoading ? "Sending..." : "Send reset link"}
             </Button>
 
             <div className="text-sm text-center">
@@ -118,7 +146,7 @@ export default function ForgotPasswordPage() {
                 Sign in
               </Link>
             </div>
-          </form>
+          </ProgressiveAuthForm>
         </div>
       </div>
     </div>

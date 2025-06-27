@@ -5,6 +5,7 @@ import {
   getPasswordResetEmailTemplate,
   getWelcomeEmailTemplate,
   getTAAssignmentNotificationTemplate,
+  getHistoricalHeadTARecordTemplate,
 } from './invitation-templates';
 
 // Initialize Resend client
@@ -28,6 +29,9 @@ export interface InvitationEmailData {
   invitationToken: string;
   role: 'head_ta' | 'admin';
   expirationDays: number;
+  targetedForTA?: boolean;
+  courseOfferingId?: string;
+  personalMessage?: string;
 }
 
 export interface TargetedInvitationEmailData {
@@ -66,6 +70,29 @@ export interface TAAssignmentEmailData {
   hoursPerWeek: number;
 }
 
+export interface ClaimProfileEmailData {
+  to: string;
+  recipientName: string;
+  inviterName: string;
+  invitationToken: string;
+  unclaimedProfileId: string;
+  personalMessage?: string;
+  expirationDays: number;
+}
+
+export interface ClaimProfileInvitationData {
+  to: string;
+  profileName: string;
+  claimUrl: string;
+  senderName: string;
+}
+
+// Type definition for Resend API response
+interface CreateEmailResponse {
+  id: string;
+  data?: unknown;
+}
+
 /**
  * Send an email using Resend
  */
@@ -82,7 +109,7 @@ export async function sendEmail(options: EmailOptions): Promise<{
       html: options.html,
       text: options.text,
       replyTo: options.replyTo,
-    });
+    }) as unknown as CreateEmailResponse;
     
     return {
       success: true,
@@ -104,6 +131,14 @@ export async function sendInvitationEmail(data: InvitationEmailData): Promise<{
   success: boolean;
   error?: string;
 }> {
+  // If this is a targeted invitation with course info, use the targeted template
+  if (data.targetedForTA && data.courseOfferingId) {
+    // We need to get course offering details for the targeted email
+    // For now, we'll fall back to the regular invitation since we don't have 
+    // all the required data (courseNumber, courseName, etc.) in this function
+    console.warn('Targeted invitation attempted but missing course details. Using regular invitation.');
+  }
+  
   const invitationUrl = `${APP_URL}/auth/accept-invitation?token=${data.invitationToken}`;
   
   const { html, text } = getInvitationEmailTemplate({
@@ -144,7 +179,7 @@ export async function sendTargetedInvitationEmail(data: TargetedInvitationEmailD
     expirationDays: data.expirationDays,
   });
   
-  const subject = `TA opportunity for ${data.courseNumber} - ${data.courseName}`;
+  const subject = `Claim Your Head TA Profile for ${data.courseNumber} - ${data.courseName}`;
   
   return sendEmail({
     to: data.to,
@@ -223,7 +258,7 @@ export async function sendTAAssignmentNotification(data: TAAssignmentEmailData):
     dashboardUrl,
   });
   
-  const subject = `You've been assigned to ${data.courseNumber}`;
+  const subject = `Claim Your Head TA Profile for ${data.courseNumber}`;
   
   return sendEmail({
     to: data.to,
@@ -268,6 +303,220 @@ export async function sendBulkEmails(
   }
   
   return { sent, failed, errors };
+}
+
+/**
+ * Send a claim profile invitation email
+ */
+export async function sendClaimProfileEmail(data: ClaimProfileEmailData): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const invitationUrl = `${APP_URL}/profile/claim?token=${data.invitationToken}&profileId=${data.unclaimedProfileId}`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Claim Your WU Head TAs Profile</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+        .footer { margin-top: 40px; font-size: 14px; color: #666; }
+        .message-box { background-color: #e9ecef; padding: 15px; border-radius: 4px; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Claim Your WU Head TAs Profile</h1>
+        </div>
+        
+        <p>Hi ${data.recipientName},</p>
+        
+        <p><strong>${data.inviterName}</strong> has invited you to claim your profile on the WU Head TAs platform.</p>
+        
+        <p>We've created a profile for you based on your teaching assistant assignments. By claiming this profile, you'll be able to:</p>
+        <ul>
+          <li>Update your information and add professional details</li>
+          <li>Connect with other head TAs</li>
+          <li>Showcase your TA experience</li>
+          <li>Control your privacy settings</li>
+        </ul>
+        
+        ${data.personalMessage ? `
+        <div class="message-box">
+          <p><strong>Personal message from ${data.inviterName}:</strong></p>
+          <p>${data.personalMessage}</p>
+        </div>
+        ` : ''}
+        
+        <a href="${invitationUrl}" class="button">Claim Your Profile</a>
+        
+        <p><small>Or copy and paste this link: ${invitationUrl}</small></p>
+        
+        <p>This invitation will expire in ${data.expirationDays} days.</p>
+        
+        <div class="footer">
+          <p>If you believe this email was sent in error or you don't wish to claim this profile, you can safely ignore this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  const text = `
+Claim Your WU Head TAs Profile
+
+Hi ${data.recipientName},
+
+${data.inviterName} has invited you to claim your profile on the WU Head TAs platform.
+
+We've created a profile for you based on your teaching assistant assignments. By claiming this profile, you'll be able to:
+- Update your information and add professional details
+- Connect with other head TAs
+- Showcase your TA experience
+- Control your privacy settings
+
+${data.personalMessage ? `Personal message from ${data.inviterName}:\n${data.personalMessage}\n\n` : ''}
+
+Claim your profile: ${invitationUrl}
+
+This invitation will expire in ${data.expirationDays} days.
+
+If you believe this email was sent in error or you don't wish to claim this profile, you can safely ignore this email.
+  `;
+  
+  const subject = 'Claim Your WU Head TAs Profile';
+  
+  return sendEmail({
+    to: data.to,
+    subject,
+    html,
+    text,
+  });
+}
+
+/**
+ * Send historical Head TA record notification
+ */
+export async function sendHistoricalHeadTARecordNotification(data: {
+  to: string;
+  recipientName: string;
+  courseNumber: string;
+  courseName: string;
+  semester: string;
+  professorName: string | null;
+  claimToken: string;
+}): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const claimUrl = `${APP_URL}/profile/claim?token=${data.claimToken}`;
+  
+  const { html, text } = getHistoricalHeadTARecordTemplate({
+    recipientName: data.recipientName,
+    courseNumber: data.courseNumber,
+    courseName: data.courseName,
+    semester: data.semester,
+    professorName: data.professorName,
+    claimUrl,
+  });
+  
+  const subject = `You've been recorded as a Head TA for ${data.courseNumber}`;
+  
+  return sendEmail({
+    to: data.to,
+    subject,
+    html,
+    text,
+  });
+}
+
+/**
+ * Send claim profile invitation (simple version)
+ */
+export async function sendClaimProfileInvitation(data: ClaimProfileInvitationData): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Claim Your WU Head TAs Profile</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+        .footer { margin-top: 40px; font-size: 14px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Claim Your WU Head TAs Profile</h1>
+        </div>
+        
+        <p>Hi ${data.profileName},</p>
+        
+        <p><strong>${data.senderName}</strong> has invited you to claim your profile on the WU Head TAs platform.</p>
+        
+        <p>We have a profile for you based on your teaching assistant records. By claiming this profile, you'll be able to:</p>
+        <ul>
+          <li>Update your information and add professional details</li>
+          <li>Connect with other head TAs</li>
+          <li>Showcase your TA experience</li>
+          <li>Control your privacy settings</li>
+        </ul>
+        
+        <a href="${data.claimUrl}" class="button">Claim Your Profile</a>
+        
+        <p><small>Or copy and paste this link: ${data.claimUrl}</small></p>
+        
+        <p>This invitation will expire in 30 days.</p>
+        
+        <div class="footer">
+          <p>If you believe this email was sent in error or you don't wish to claim this profile, you can safely ignore this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  const text = `
+Claim Your WU Head TAs Profile
+
+Hi ${data.profileName},
+
+${data.senderName} has invited you to claim your profile on the WU Head TAs platform.
+
+We have a profile for you based on your teaching assistant records. By claiming this profile, you'll be able to:
+- Update your information and add professional details
+- Connect with other head TAs
+- Showcase your TA experience
+- Control your privacy settings
+
+Claim your profile: ${data.claimUrl}
+
+This invitation will expire in 30 days.
+
+If you believe this email was sent in error or you don't wish to claim this profile, you can safely ignore this email.
+  `;
+  
+  const subject = 'Claim Your WU Head TAs Profile';
+  
+  return sendEmail({
+    to: data.to,
+    subject,
+    html,
+    text,
+  });
 }
 
 /**

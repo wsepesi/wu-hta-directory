@@ -27,7 +27,7 @@ export function VirtualList<T>({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const totalHeight = items.length * itemHeight;
   const viewportHeight = typeof height === 'number' ? height : 0;
@@ -65,7 +65,7 @@ export function VirtualList<T>({
       
       // Get initial height if using percentage
       if (typeof height === 'string') {
-        const rect = container.getBoundingClientRect();
+        container.getBoundingClientRect();
         // Force re-render with calculated height
         container.style.height = height;
       }

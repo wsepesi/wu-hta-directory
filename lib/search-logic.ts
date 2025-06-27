@@ -1,13 +1,13 @@
 import { db } from './db';
 import { users, courses, professors, courseOfferings, taAssignments } from './db/schema';
-import { or, ilike, sql, and, eq } from 'drizzle-orm';
+import { or, ilike, sql, eq } from 'drizzle-orm';
 
 interface SearchResult {
   type: 'user' | 'course' | 'professor';
   id: string;
   title: string;
   subtitle: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   score: number;
 }
 
@@ -25,7 +25,6 @@ export async function performGlobalSearch(options: SearchOptions): Promise<Searc
   const { query, types = ['user', 'course', 'professor'], limit = 20, includePrivate = false } = options;
   
   const results: SearchResult[] = [];
-  const searchTerm = `%${query}%`;
   
   // Search users
   if (types.includes('user')) {
@@ -102,7 +101,7 @@ export async function searchUsers(
     if (user.email.toLowerCase().includes(lowerQuery)) score += 15;
     
     // Filter out sensitive info for non-admin searches
-    const metadata: Record<string, any> = {
+    const metadata: Record<string, unknown> = {
       gradYear: user.gradYear,
       degreeProgram: user.degreeProgram,
       role: user.role,
@@ -140,7 +139,6 @@ export async function searchCourses(
       id: courses.id,
       courseNumber: courses.courseNumber,
       courseName: courses.courseName,
-      offeringPattern: courses.offeringPattern,
       latestOffering: sql<string>`
         (SELECT co.semester || ' ' || co.year 
          FROM ${courseOfferings} co 
@@ -193,7 +191,6 @@ export async function searchCourses(
       subtitle: course.latestOffering ? `Last offered: ${course.latestOffering}` : 'Not recently offered',
       metadata: {
         courseNumber: course.courseNumber,
-        offeringPattern: course.offeringPattern,
         totalTAs: course.taCount,
       },
       score,
@@ -335,5 +332,73 @@ export async function getSearchSuggestions(
     suggestions.push(...professorSuggestions.map(p => p.suggestion));
   }
   
-  return [...new Set(suggestions)].slice(0, limit);
+  return Array.from(new Set(suggestions)).slice(0, limit);
+}
+
+/**
+ * Search all entities and return them in a simple format for the search page
+ */
+export async function searchAll(query: string) {
+  const searchTerm = `%${query}%`;
+  
+  // Search users
+  const userResults = await db
+    .select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      gradYear: users.gradYear,
+    })
+    .from(users)
+    .where(
+      or(
+        ilike(users.firstName, searchTerm),
+        ilike(users.lastName, searchTerm),
+        ilike(users.email, searchTerm),
+        sql`${users.firstName} || ' ' || ${users.lastName} ILIKE ${searchTerm}`
+      )
+    )
+    .limit(20);
+  
+  // Search courses
+  const courseResults = await db
+    .select({
+      id: courses.id,
+      courseNumber: courses.courseNumber,
+      courseName: courses.courseName,
+    })
+    .from(courses)
+    .where(
+      or(
+        ilike(courses.courseNumber, searchTerm),
+        ilike(courses.courseName, searchTerm)
+      )
+    )
+    .limit(20);
+  
+  // Search professors
+  const professorResults = await db
+    .select({
+      id: professors.id,
+      firstName: professors.firstName,
+      lastName: professors.lastName,
+      email: professors.email,
+    })
+    .from(professors)
+    .where(
+      or(
+        ilike(professors.firstName, searchTerm),
+        ilike(professors.lastName, searchTerm),
+        ilike(professors.email, searchTerm),
+        sql`${professors.firstName} || ' ' || ${professors.lastName} ILIKE ${searchTerm}`
+      )
+    )
+    .limit(20);
+  
+  return {
+    users: userResults,
+    courses: courseResults,
+    professors: professorResults,
+  };
 }

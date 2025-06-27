@@ -18,7 +18,7 @@ interface ToastProps {
   onDismiss: (id: string) => void;
 }
 
-function Toast({ toast, onDismiss }: ToastProps) {
+export function Toast({ toast, onDismiss }: ToastProps) {
   useEffect(() => {
     if (toast.duration) {
       const timer = setTimeout(() => {
@@ -29,17 +29,17 @@ function Toast({ toast, onDismiss }: ToastProps) {
   }, [toast, onDismiss]);
 
   const bgColor = {
-    success: "bg-green-50 border-green-400",
-    error: "bg-red-50 border-red-400",
-    info: "bg-blue-50 border-blue-400",
-    warning: "bg-yellow-50 border-yellow-400",
+    success: "bg-white border-charcoal",
+    error: "bg-white border-red-600",
+    info: "bg-white border-charcoal",
+    warning: "bg-white border-yellow-600",
   }[toast.type];
 
   const iconColor = {
-    success: "text-green-400",
-    error: "text-red-400",
-    info: "text-blue-400",
-    warning: "text-yellow-400",
+    success: "text-charcoal",
+    error: "text-red-600",
+    info: "text-charcoal",
+    warning: "text-yellow-600",
   }[toast.type];
 
   const icon = {
@@ -51,23 +51,23 @@ function Toast({ toast, onDismiss }: ToastProps) {
 
   return (
     <div
-      className={`max-w-sm w-full ${bgColor} border rounded-lg shadow-lg pointer-events-auto`}
+      className={`max-w-sm w-full ${bgColor} border pointer-events-auto`}
     >
       <div className="p-4">
         <div className="flex items-start">
           <div className={`flex-shrink-0 ${iconColor}`}>
-            <span className="text-lg font-bold">{icon}</span>
+            <span className="text-lg font-serif">{icon}</span>
           </div>
           <div className="ml-3 w-0 flex-1">
-            <p className="text-sm font-medium text-gray-900">{toast.title}</p>
+            <p className="text-sm font-serif text-charcoal">{toast.title}</p>
             {toast.message && (
-              <p className="mt-1 text-sm text-gray-500">{toast.message}</p>
+              <p className="mt-1 text-sm text-charcoal/60">{toast.message}</p>
             )}
           </div>
           <div className="ml-4 flex-shrink-0 flex">
             <button
               onClick={() => onDismiss(toast.id)}
-              className="inline-flex text-gray-400 hover:text-gray-500"
+              className="inline-flex text-charcoal/40 hover:text-charcoal/60"
             >
               <span className="sr-only">Close</span>
               <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -93,8 +93,8 @@ export function ToastContainer() {
       setToasts((prev) => [...prev, event.detail]);
     };
 
-    window.addEventListener("toast" as any, handleToast);
-    return () => window.removeEventListener("toast" as any, handleToast);
+    window.addEventListener("toast" as keyof WindowEventMap, handleToast as EventListener);
+    return () => window.removeEventListener("toast" as keyof WindowEventMap, handleToast as EventListener);
   }, []);
 
   const dismissToast = (id: string) => {

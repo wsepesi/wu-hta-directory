@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { TACard } from './TACard';
 import { Input } from '../ui/Input';
 import { BodyText } from '../ui/Typography';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { Skeleton, SkeletonCard } from '../ui/Skeleton';
 import { ErrorMessage } from '../ui/ErrorMessage';
 import { clsx } from 'clsx';
 
@@ -81,8 +81,25 @@ export function TAList({
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <LoadingSpinner size="lg" />
+      <div className="space-y-6">
+        {/* Filters skeleton */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Skeleton variant="rectangular" height={40} />
+            <Skeleton variant="rectangular" height={40} />
+            <Skeleton variant="rectangular" height={40} />
+          </div>
+        </div>
+
+        {/* Results count skeleton */}
+        <Skeleton variant="text" width={150} />
+
+        {/* TA Grid skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       </div>
     );
   }

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Course, Professor, CourseOffering } from "@/lib/types";
 import { Button } from '@/components/ui/Button';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useCourseOfferings } from '@/hooks/useCourses';
 
 interface CourseOfferingFormProps {
@@ -36,6 +35,15 @@ export default function CourseOfferingForm({
   );
   const [selectedProfessor, setSelectedProfessor] = useState(offering?.professorId || "");
   const [validationError, setValidationError] = useState<string | null>(null);
+  
+  console.log('[COURSE_OFFERING_FORM] Component rendered with props:', {
+    coursesCount: courses.length,
+    professorsCount: professors.length,
+    isEditMode: !!offering,
+    offeringId: offering?.id,
+    hasOnSuccess: !!onSuccess,
+    hasOnCancel: !!onCancel
+  });
 
   const semesters = [
     {
@@ -66,15 +74,25 @@ export default function CourseOfferingForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[COURSE_OFFERING_FORM] Form submitted');
     setValidationError(null);
     
+    console.log('[COURSE_OFFERING_FORM] Form state:', {
+      selectedCourse,
+      selectedSemester,
+      selectedProfessor,
+      isEdit: !!offering
+    });
+    
     if (!selectedCourse) {
+      console.error('[COURSE_OFFERING_FORM] No course selected');
       setValidationError('Please select a course');
       return;
     }
     
     // Parse semester into year and season
     const [season, year] = selectedSemester.split(' ');
+    console.log('[COURSE_OFFERING_FORM] Parsed semester:', { season, year });
     
     try {
       const data = {
@@ -85,21 +103,32 @@ export default function CourseOfferingForm({
         professorId: selectedProfessor || null,
       };
       
+      console.log('[COURSE_OFFERING_FORM] Submitting data:', data);
+      
       if (offering) {
+        console.log('[COURSE_OFFERING_FORM] Updating existing offering:', offering.id);
         await updateOffering(offering.id, data);
       } else {
+        console.log('[COURSE_OFFERING_FORM] Creating new offering');
         await createOffering(data);
       }
       
+      console.log('[COURSE_OFFERING_FORM] Operation successful');
+      
       if (onSuccess) {
+        console.log('[COURSE_OFFERING_FORM] Calling onSuccess callback');
         onSuccess();
       } else {
+        console.log('[COURSE_OFFERING_FORM] Redirecting to /manage/courses');
         router.push('/manage/courses');
         router.refresh();
       }
     } catch (err) {
       // Error is already set by the hook
-      console.error('Failed to save offering:', err);
+      console.error('[COURSE_OFFERING_FORM] Failed to save offering:', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        errorObject: err
+      });
     }
   };
 
@@ -201,7 +230,7 @@ export default function CourseOfferingForm({
           </Button>
         )}
         <Button type="submit" disabled={loading}>
-          {loading ? <LoadingSpinner size="sm" /> : offering ? 'Update Offering' : 'Create Offering'}
+          {loading ? 'Saving...' : offering ? 'Update Offering' : 'Create Offering'}
         </Button>
       </div>
     </form>

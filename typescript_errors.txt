@@ -1,0 +1,60 @@
+components/admin/AdminReports.tsx(88,46): error TS18046: 'err' is of type 'unknown'.
+components/dashboard/TAWorkloadWidget.tsx(58,22): error TS18048: 'typedAssignment.user' is possibly 'undefined'.
+components/dashboard/TAWorkloadWidget.tsx(58,56): error TS18048: 'typedAssignment.user' is possibly 'undefined'.
+components/search/GlobalSearch.tsx(33,25): error TS2554: Expected 1 arguments, but got 0.
+components/ui/index.ts(8,10): error TS2459: Module '"./Toast"' declares 'Toast' locally, but it is not exported.
+components/ui/index.ts(9,39): error TS2305: Module '"./Typography"' has no exported member 'SansHeading'.
+components/ui/LazyImage.tsx(48,7): error TS2322: Type 'RefObject<Element>' is not assignable to type 'Ref<HTMLDivElement> | undefined'.
+  Type 'RefObject<Element>' is not assignable to type 'RefObject<HTMLDivElement | null>'.
+    Type 'Element' is missing the following properties from type 'HTMLDivElement': align, accessKey, accessKeyLabel, autocapitalize, and 127 more.
+components/ui/VirtualList.tsx(30,28): error TS2554: Expected 1 arguments, but got 0.
+drizzle.config.ts(8,5): error TS1360: Type '{ schema: string; out: string; dialect: "postgresql"; dbCredentials: { connectionString: string; }; }' does not satisfy the expected type 'Config'.
+  Types of property 'dbCredentials' are incompatible.
+    Object literal may only specify known properties, and 'connectionString' does not exist in type '{ host: string; port?: number | undefined; user?: string | undefined; password?: string | undefined; database: string; ssl?: boolean | "require" | "allow" | "prefer" | "verify-full" | ConnectionOptions | undefined; } | { ...; } | { ...; } | { ...; }'.
+hooks/useAdmin.ts(303,43): error TS18048: 'response.data' is possibly 'undefined'.
+hooks/useFormValidation.ts(3,10): error TS2440: Import declaration conflicts with local declaration of 'debounce'.
+hooks/useFormValidation.ts(73,38): error TS2339: Property 'shape' does not exist on type 'ZodType<T, ZodTypeDef, T>'.
+hooks/useFormValidation.ts(135,34): error TS2339: Property 'shape' does not exist on type 'ZodType<T, ZodTypeDef, T>'.
+hooks/useFormValidation.ts(222,45): error TS2339: Property 'shape' does not exist on type 'ZodType<T, ZodTypeDef, T>'.
+hooks/useIntersectionObserver.ts(18,22): error TS2554: Expected 1 arguments, but got 0.
+lib/audit-logger.ts(44,35): error TS2339: Property 'get' does not exist on type 'Promise<ReadonlyHeaders>'.
+lib/audit-logger.ts(44,73): error TS2339: Property 'get' does not exist on type 'Promise<ReadonlyHeaders>'.
+lib/audit-logger.ts(45,35): error TS2339: Property 'get' does not exist on type 'Promise<ReadonlyHeaders>'.
+lib/audit-logger.ts(97,5): error TS2740: Type 'Omit<PgSelectBase<"audit_logs", { id: PgColumn<{ name: "id"; tableName: "audit_logs"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; ... 5 more ...; generated: undefined; }, {}, {}>; ... 7 more ...; createdAt: PgColumn<...>; }, ... 5 ...' is missing the following properties from type 'PgSelectBase<"audit_logs", { id: PgColumn<{ name: "id"; tableName: "audit_logs"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; ... 5 more ...; generated: undefined; }, {}, {}>; ... 7 more ...; createdAt: PgColumn<...>; }, ... 5 more ...': config, joinsNotNullableMap, tableName, isPartialSelect, and 6 more.
+lib/audit-logger.ts(101,3): error TS2740: Type 'Omit<PgSelectBase<"audit_logs", { id: PgColumn<{ name: "id"; tableName: "audit_logs"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; ... 5 more ...; generated: undefined; }, {}, {}>; ... 7 more ...; createdAt: PgColumn<...>; }, ... 5 ...' is missing the following properties from type 'PgSelectBase<"audit_logs", { id: PgColumn<{ name: "id"; tableName: "audit_logs"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; ... 5 more ...; generated: undefined; }, {}, {}>; ... 7 more ...; createdAt: PgColumn<...>; }, ... 5 more ...': config, joinsNotNullableMap, tableName, isPartialSelect, and 6 more.
+lib/audit-logger.ts(103,5): error TS2740: Type 'Omit<PgSelectBase<"audit_logs", { id: PgColumn<{ name: "id"; tableName: "audit_logs"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; ... 5 more ...; generated: undefined; }, {}, {}>; ... 7 more ...; createdAt: PgColumn<...>; }, ... 5 ...' is missing the following properties from type 'PgSelectBase<"audit_logs", { id: PgColumn<{ name: "id"; tableName: "audit_logs"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; ... 5 more ...; generated: undefined; }, {}, {}>; ... 7 more ...; createdAt: PgColumn<...>; }, ... 5 more ...': config, joinsNotNullableMap, tableName, isPartialSelect, and 6 more.
+lib/auth.ts(66,49): error TS2339: Property '_expires' does not exist on type '{ sessionToken: string; userId: string; expires: Date; }'.
+lib/auth.ts(68,27): error TS2352: Conversion of type 'typeof globalThis' to type 'Record<string, Record<string, boolean>>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Property 'globalThis' is incompatible with index signature.
+    Type 'typeof globalThis' is not comparable to type 'Record<string, boolean>'.
+      Property 'globalThis' is incompatible with index signature.
+        Type 'typeof globalThis' is not comparable to type 'boolean'.
+lib/auth.ts(69,15): error TS2352: Conversion of type 'typeof globalThis' to type 'Record<string, Record<string, boolean>>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Property 'globalThis' is incompatible with index signature.
+    Type 'typeof globalThis' is not comparable to type 'Record<string, boolean>'.
+      Property 'globalThis' is incompatible with index signature.
+        Type 'typeof globalThis' is not comparable to type 'boolean'.
+lib/auth.ts(125,49): error TS2339: Property '_expires' does not exist on type 'Partial<AdapterSession> & Pick<AdapterSession, "sessionToken">'.
+lib/auth.ts(151,22): error TS7006: Parameter 'data' implicitly has an 'any' type.
+lib/auth.ts(198,11): error TS2322: Type '({ _providerAccountId, _provider }: { _providerAccountId: string; _provider: string; }) => Promise<null>' is not assignable to type '(providerAccountId: Pick<AdapterAccount, "provider" | "providerAccountId">) => Awaitable<AdapterUser | null>'.
+  Types of parameters '__0' and 'providerAccountId' are incompatible.
+    Type 'Pick<AdapterAccount, "provider" | "providerAccountId">' is missing the following properties from type '{ _providerAccountId: string; _provider: string; }': _providerAccountId, _provider
+lib/auth.ts(223,11): error TS2322: Type '({ _identifier, _expires, _token }: { _identifier: string; _expires: Date; _token: string; }) => Promise<null>' is not assignable to type '(verificationToken: VerificationToken) => Awaitable<VerificationToken | null | undefined>'.
+  Types of parameters '__0' and 'verificationToken' are incompatible.
+    Type 'VerificationToken' is missing the following properties from type '{ _identifier: string; _expires: Date; _token: string; }': _identifier, _expires, _token
+lib/auth.ts(228,11): error TS2322: Type '({ _identifier, _token }: { _identifier: string; _token: string; }) => Promise<null>' is not assignable to type '(params: { identifier: string; token: string; }) => Awaitable<VerificationToken | null>'.
+  Types of parameters '__0' and 'params' are incompatible.
+    Type '{ identifier: string; token: string; }' is missing the following properties from type '{ _identifier: string; _token: string; }': _identifier, _token
+lib/auth.ts(244,11): error TS2322: Type '({ token, user, _account }: { token: Record<string, unknown>; user?: Record<string, unknown> | undefined; _account?: unknown; }) => Promise<Record<string, unknown>>' is not assignable to type '(params: { token: JWT; user: User | AdapterUser; account: Account | null; profile?: Profile | undefined; trigger?: "signIn" | "signUp" | "update" | undefined; isNewUser?: boolean | undefined; session?: any; }) => Awaitable<...>'.
+  Types of parameters '__0' and 'params' are incompatible.
+    Type '{ token: JWT; user: User | AdapterUser; account: Account | null; profile?: Profile | undefined; trigger?: "signIn" | "signUp" | "update" | undefined; isNewUser?: boolean | undefined; session?: any; }' is not assignable to type '{ token: Record<string, unknown>; user?: Record<string, unknown> | undefined; _account?: unknown; }'.
+      Types of property 'user' are incompatible.
+        Type 'User | AdapterUser' is not assignable to type 'Record<string, unknown> | undefined'.
+          Type 'User' is not assignable to type 'Record<string, unknown>'.
+            Index signature for type 'string' is missing in type 'User'.
+lib/db/schema.ts(5,14): error TS7022: 'users' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+lib/db/schema.ts(18,44): error TS7024: Function implicitly has return type 'any' because it does not have a return type annotation and is referenced directly or indirectly in one of its return expressions.
+lib/email-service.ts(87,20): error TS2352: Conversion of type 'import("/Users/wsepesi/lib/wu-head-tas/node_modules/.pnpm/resend@4.6.0_react-dom@19.1.0_react@19.1.0__react@19.1.0/node_modules/resend/dist/index").CreateEmailResponse' to type 'CreateEmailResponse' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Property 'id' is missing in type 'import("/Users/wsepesi/lib/wu-head-tas/node_modules/.pnpm/resend@4.6.0_react-dom@19.1.0_react@19.1.0__react@19.1.0/node_modules/resend/dist/index").CreateEmailResponse' but required in type 'CreateEmailResponse'.
+lib/public-directory.ts(77,7): error TS2345: Argument of type 'SQL<unknown> | undefined' is not assignable to parameter of type 'SQL<unknown>'.
+  Type 'undefined' is not assignable to type 'SQL<unknown>'.

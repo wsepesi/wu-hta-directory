@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { userRepository } from '@/lib/repositories/users';
+import { getPublicDirectory } from '@/lib/public-directory';
 import type { ApiResponse, User, UserFilters } from '@/lib/types';
 
 /**
@@ -12,15 +13,48 @@ export async function GET(request: NextRequest) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' } as ApiResponse<never>,
-        { status: 401 }
-      );
-    }
 
     // Parse query parameters for filters
     const searchParams = request.nextUrl.searchParams;
+    
+    // If not authenticated, return public directory data only
+    if (!session?.user) {
+      const publicFilters = {
+        search: searchParams.get('search') || undefined,
+        gradYear: searchParams.get('gradYear') ? parseInt(searchParams.get('gradYear')!) : undefined,
+        location: searchParams.get('location') || undefined,
+        degreeProgram: searchParams.get('degreeProgram') || undefined,
+        limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50,
+        offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0,
+      };
+      
+      const profiles = await getPublicDirectory(publicFilters);
+      
+      // Return public profiles in a format similar to User[]
+      const publicUsers = profiles.map(profile => ({
+        id: profile.id,
+        email: '', // Don't expose email publicly
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        gradYear: profile.gradYear,
+        degreeProgram: undefined,
+        currentRole: profile.currentRole,
+        linkedinUrl: undefined,
+        personalSite: undefined,
+        location: profile.location,
+        role: 'head_ta' as const,
+        invitedBy: undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+      
+      return NextResponse.json(
+        { data: publicUsers, total: profiles.length } as ApiResponse<User[]>,
+        { status: 200 }
+      );
+    }
+    
+    // Authenticated users get full access
     const filters: UserFilters = {};
 
     const gradYear = searchParams.get('gradYear');

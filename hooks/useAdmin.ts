@@ -297,12 +297,13 @@ export const useAuditLog = (pageSize: number = 50): UseAuditLogReturn => {
       if (response.error) {
         setError(response.error);
       } else if (response.data) {
+        const data = response.data;
         if (pageNum === 1) {
-          setEntries(response.data.entries);
+          setEntries(data.entries);
         } else {
-          setEntries(prev => [...prev, ...response.data.entries]);
+          setEntries(prev => [...prev, ...data.entries]);
         }
-        setHasMore(response.data.hasMore);
+        setHasMore(data.hasMore);
         setPage(pageNum);
       }
     } catch (err) {

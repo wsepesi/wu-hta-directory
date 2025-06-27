@@ -3,15 +3,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { professorRepository } from "@/lib/repositories/professors";
 import { courseOfferingRepository } from "@/lib/repositories/course-offerings";
+import CleanLayout, { CleanPageHeader } from "@/components/layout/CleanLayout";
+import type { CourseOfferingWithRelations } from "@/lib/types";
+import { UnclaimedTAMarker } from "@/components/ta/UnclaimedTAMarker";
+import { isSemesterCurrent, isSemesterFuture, parseSemester } from "@/lib/semester-utils";
+
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     professorId: string;
-  };
+  }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const professor = await professorRepository.findById(params.professorId);
+  const resolvedParams = await params;
+  const professor = await professorRepository.findById(resolvedParams.professorId);
   
   if (!professor) {
     return {
@@ -25,15 +32,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
+// Helper function to check if a semester is active (current or future)
+function isActiveSemester(season: string, year: number): boolean {
+  try {
+    const semester = parseSemester(`${season} ${year}`);
+    return isSemesterCurrent(semester) || isSemesterFuture(semester);
+  } catch {
+    return false;
+  }
+}
+
 export default async function ProfessorDetailPage({ params }: PageProps) {
-  const professor = await professorRepository.findById(params.professorId);
+  const resolvedParams = await params;
+  const professor = await professorRepository.findWithCourseOfferings(resolvedParams.professorId);
 
   if (!professor) {
     notFound();
   }
 
-  // Get all offerings with full relations
-  const offerings = await courseOfferingRepository.findWithRelationsByProfessorId(professor.id);
+  // Get all offerings with full relations using the basic find by professor ID
+  const basicOfferings = await courseOfferingRepository.findByProfessorId(professor.id);
+  
+  // Get the detailed offerings with relations
+  const offerings = await Promise.all(
+    basicOfferings.map(async (offering) => {
+      return await courseOfferingRepository.findWithRelations(offering.id);
+    })
+  ).then(results => results.filter(Boolean) as CourseOfferingWithRelations[]);
 
   // Get current semester offerings
   const currentYear = new Date().getFullYear();
@@ -46,15 +71,17 @@ export default async function ProfessorDetailPage({ params }: PageProps) {
   // Group by course
   const courseGroups = offerings.reduce((acc, offering) => {
     const courseId = offering.course?.id || "";
-    if (!acc[courseId]) {
+    if (!acc[courseId] && offering.course) {
       acc[courseId] = {
         course: offering.course,
         offerings: [],
       };
     }
-    acc[courseId].offerings.push(offering);
+    if (offering.course) {
+      acc[courseId].offerings.push(offering);
+    }
     return acc;
-  }, {} as Record<string, { course: any; offerings: typeof offerings }>);
+  }, {} as Record<string, { course: { id: string; courseNumber: string; courseName: string }; offerings: typeof offerings }>);
 
   // Get unique TAs
   const uniqueTAs = new Map();
@@ -67,225 +94,177 @@ export default async function ProfessorDetailPage({ params }: PageProps) {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <Link
-            href="/professors"
-            className="text-sm text-indigo-600 hover:text-indigo-500 flex items-center"
-          >
-            <svg
-              className="mr-1 h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Back to professors
-          </Link>
-          <h1 className="mt-4 text-3xl font-extrabold text-gray-900">
-            {professor.firstName} {professor.lastName}
-          </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            <a
-              href={`mailto:${professor.email}`}
-              className="text-indigo-600 hover:text-indigo-500"
-            >
-              {professor.email}
-            </a>
-          </p>
-        </div>
+    <CleanLayout maxWidth="4xl">
+      <div className="mb-12">
+        <Link
+          href="/professors"
+          className="font-serif text-sm uppercase tracking-wider text-charcoal hover:opacity-70 transition-opacity duration-200 inline-flex items-center mb-8"
+        >
+          ← Back to professors
+        </Link>
+        <CleanPageHeader
+          title={`${professor.firstName} ${professor.lastName}`}
+          subtitle={professor.email}
+        />
+      </div>
 
-        {/* Current Courses */}
-        {currentOfferings.length > 0 && (
-          <div className="mb-8 bg-blue-50 border-l-4 border-blue-400 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
+      {/* Current Courses */}
+      {currentOfferings.length > 0 && (
+        <section className="mb-16">
+          <h2 className="font-serif text-xl text-charcoal mb-4">
+            Currently Teaching • {currentSeason} {currentYear}
+          </h2>
+          <div className="space-y-3">
+            {currentOfferings.map((offering) => (
+              <div key={offering.id} className="border-l-2 border-charcoal/20 pl-4">
+                <Link
+                  href={`/courses/${offering.course?.courseNumber}`}
+                  className="font-serif text-lg text-charcoal hover:opacity-70 transition-opacity duration-200"
+                >
+                  {offering.course?.courseNumber}: {offering.course?.courseName}
+                </Link>
+                {offering.taAssignments && offering.taAssignments.length === 0 && (
+                  isActiveSemester(offering.season, offering.year) ? (
+                    <UnclaimedTAMarker 
+                      courseId={offering.course?.id}
+                      semesterId={offering.id}
+                      className="ml-2 text-sm"
+                    />
+                  ) : (
+                    <span className="ml-2 text-sm text-red-800">(No Head TA Recorded)</span>
+                  )
+                )}
               </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800">
-                  Currently Teaching ({currentSeason} {currentYear})
-                </h3>
-                <div className="mt-2 text-sm text-blue-700">
-                  <ul className="list-disc pl-5 space-y-1">
-                    {currentOfferings.map((offering) => (
-                      <li key={offering.id}>
-                        <Link
-                          href={`/courses/${offering.course?.courseNumber}`}
-                          className="font-medium hover:underline"
-                        >
-                          {offering.course?.courseNumber}: {offering.course?.courseName}
-                        </Link>
-                        {offering.taAssignments && offering.taAssignments.length === 0 && (
-                          <span className="ml-2 text-red-600">(Needs TA)</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
-        )}
+        </section>
+      )}
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-8">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <dt className="text-sm font-medium text-gray-500 truncate">
-                Unique Courses
-              </dt>
-              <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                {Object.keys(courseGroups).length}
-              </dd>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <dt className="text-sm font-medium text-gray-500 truncate">
-                Total Offerings
-              </dt>
-              <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                {offerings.length}
-              </dd>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <dt className="text-sm font-medium text-gray-500 truncate">
-                Head TAs Worked With
-              </dt>
-              <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                {uniqueTAs.size}
-              </dd>
-            </div>
-          </div>
-        </div>
-
-        {/* Courses Taught */}
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
-          <div className="px-4 py-5 sm:px-6">
-            <h2 className="text-lg font-medium text-gray-900">Courses Taught</h2>
-          </div>
-          <div className="border-t border-gray-200">
-            {Object.values(courseGroups)
-              .sort((a, b) => (a.course?.courseNumber || "").localeCompare(b.course?.courseNumber || ""))
-              .map((group) => (
-                <div key={group.course?.id} className="px-4 py-5 sm:px-6">
-                  <h3 className="text-base font-medium text-gray-900">
-                    <Link
-                      href={`/courses/${group.course?.courseNumber}`}
-                      className="text-indigo-600 hover:text-indigo-500"
-                    >
-                      {group.course?.courseNumber}: {group.course?.courseName}
-                    </Link>
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Taught {group.offerings.length} time{group.offerings.length !== 1 ? "s" : ""}
-                  </p>
-                  <div className="mt-3 space-y-3">
-                    {group.offerings
-                      .sort((a, b) => b.year - a.year || b.season.localeCompare(a.season))
-                      .map((offering) => (
-                        <div
-                          key={offering.id}
-                          className="border-l-4 border-gray-200 pl-4"
-                        >
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium text-gray-900">
-                              {offering.season} {offering.year}
-                            </p>
-                            <Link
-                              href={`/semesters/${offering.semester}`}
-                              className="text-sm text-indigo-600 hover:text-indigo-500"
-                            >
-                              View semester
-                            </Link>
-                          </div>
-                          {offering.taAssignments && offering.taAssignments.length > 0 && (
-                            <div className="mt-2">
-                              <p className="text-sm text-gray-600">Head TAs:</p>
-                              <div className="mt-1 flex flex-wrap gap-2">
-                                {offering.taAssignments.map((assignment) => (
-                                  <Link
-                                    key={assignment.id}
-                                    href={`/people/${assignment.user?.id}`}
-                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 hover:bg-gray-200"
-                                  >
-                                    {assignment.user?.firstName} {assignment.user?.lastName}
-                                  </Link>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        {/* All Head TAs */}
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6">
-            <h2 className="text-lg font-medium text-gray-900">Head TAs Worked With</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              All head TAs who have worked with {professor.firstName} {professor.lastName}
+      {/* Summary Statistics */}
+      <section className="mb-16">
+        <div className="grid grid-cols-3 gap-8 text-center">
+          <div>
+            <p className="font-serif text-4xl text-charcoal mb-2">
+              {Object.keys(courseGroups).length}
+            </p>
+            <p className="text-xs uppercase tracking-wider text-charcoal/60">
+              Unique Courses
             </p>
           </div>
-          <div className="border-t border-gray-200">
-            <ul className="divide-y divide-gray-200">
-              {Array.from(uniqueTAs.values())
-                .sort((a, b) => a.lastName.localeCompare(b.lastName))
-                .map((ta) => (
-                  <li key={ta.id}>
-                    <Link
-                      href={`/people/${ta.id}`}
-                      className="block hover:bg-gray-50 px-4 py-4 sm:px-6"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-indigo-600">
-                            {ta.firstName} {ta.lastName}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {ta.gradYear && `Class of ${ta.gradYear}`}
-                            {ta.currentRole && ` • ${ta.currentRole}`}
-                          </p>
-                        </div>
-                        <svg
-                          className="h-5 w-5 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-            </ul>
+
+          <div>
+            <p className="font-serif text-4xl text-charcoal mb-2">
+              {offerings.length}
+            </p>
+            <p className="text-xs uppercase tracking-wider text-charcoal/60">
+              Total Offerings
+            </p>
+          </div>
+
+          <div>
+            <p className="font-serif text-4xl text-charcoal mb-2">
+              {uniqueTAs.size}
+            </p>
+            <p className="text-xs uppercase tracking-wider text-charcoal/60">
+              Head TAs Worked With
+            </p>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      {/* Courses Taught */}
+      <section className="mb-16">
+        <h2 className="font-serif text-2xl text-charcoal mb-8">Courses Taught</h2>
+        <div className="space-y-12">
+          {Object.values(courseGroups)
+            .sort((a, b) => (a.course?.courseNumber || "").localeCompare(b.course?.courseNumber || ""))
+            .map((group) => (
+              <div key={group.course?.id} className="border-t border-charcoal/20 pt-8">
+                <h3 className="font-serif text-xl text-charcoal mb-2">
+                  <Link
+                    href={`/courses/${group.course?.courseNumber}`}
+                    className="hover:opacity-70 transition-opacity duration-200"
+                  >
+                    {group.course?.courseNumber}: {group.course?.courseName}
+                  </Link>
+                </h3>
+                <p className="font-serif text-sm italic text-charcoal/60 mb-6">
+                  Taught {group.offerings.length} time{group.offerings.length !== 1 ? "s" : ""}
+                </p>
+                <div className="space-y-6">
+                  {group.offerings
+                    .sort((a, b) => b.year - a.year || b.season.localeCompare(a.season))
+                    .map((offering) => (
+                      <div
+                        key={offering.id}
+                        className="pl-8 border-l-2 border-charcoal/10"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-serif text-lg text-charcoal">
+                            {offering.season} {offering.year}
+                          </p>
+                          <Link
+                            href={`/semesters/${offering.semester}`}
+                            className="font-serif text-sm text-charcoal hover:opacity-70 transition-opacity duration-200"
+                          >
+                            View semester →
+                          </Link>
+                        </div>
+                        {offering.taAssignments && offering.taAssignments.length > 0 && (
+                          <div>
+                            <p className="text-xs uppercase tracking-wider text-charcoal/60 mb-2">Head TAs:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {offering.taAssignments.map((assignment) => (
+                                <Link
+                                  key={assignment.id}
+                                  href={`/profile/${assignment.user?.id}`}
+                                  className="font-serif text-sm text-charcoal hover:opacity-70 transition-opacity duration-200"
+                                >
+                                  {assignment.user?.firstName} {assignment.user?.lastName}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ))}
+        </div>
+      </section>
+
+      {/* All Head TAs */}
+      <section>
+        <h2 className="font-serif text-2xl text-charcoal mb-4">Head TAs Worked With</h2>
+        <p className="font-serif text-base text-charcoal/60 mb-8">
+          All head TAs who have worked with {professor.firstName} {professor.lastName}
+        </p>
+        <div className="space-y-4">
+          {Array.from(uniqueTAs.values())
+            .sort((a, b) => a.lastName.localeCompare(b.lastName))
+            .map((ta) => (
+              <Link
+                key={ta.id}
+                href={`/profile/${ta.id}`}
+                className="block border-t border-charcoal/20 pt-4 hover:opacity-70 transition-opacity duration-200"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-serif text-lg text-charcoal">
+                      {ta.firstName} {ta.lastName}
+                    </p>
+                    <p className="text-sm text-charcoal/60">
+                      {ta.gradYear && `Class of ${ta.gradYear}`}
+                      {ta.currentRole && ` • ${ta.currentRole}`}
+                    </p>
+                  </div>
+                  <span className="font-serif text-charcoal">→</span>
+                </div>
+              </Link>
+            ))}
+        </div>
+      </section>
+    </CleanLayout>
   );
 }

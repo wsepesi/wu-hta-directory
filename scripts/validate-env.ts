@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { z } from 'zod';
-import dotenv from 'dotenv';
-import path from 'path';
-import fs from 'fs';
+import * as path from 'path';
+import * as fs from 'fs';
 
 // ANSI color codes
 const colors = {
@@ -18,6 +17,28 @@ function log(message: string, color: keyof typeof colors = 'reset') {
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
+// Simple dotenv parser
+function loadEnvFile(filePath: string): void {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n');
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const [key, ...valueParts] = trimmed.split('=');
+        if (key && valueParts.length > 0) {
+          const value = valueParts.join('=').replace(/^['"]|['"]$/g, '');
+          process.env[key.trim()] = value;
+        }
+      }
+    }
+  } catch (error) {
+    log(`❌ Error reading environment file: ${error}`, 'red');
+    process.exit(1);
+  }
+}
+
 // Load environment variables
 const envFile = process.argv[2] || '.env.local';
 const envPath = path.resolve(process.cwd(), envFile);
@@ -28,7 +49,7 @@ if (!fs.existsSync(envPath)) {
 }
 
 log(`📋 Validating environment file: ${envPath}`, 'blue');
-dotenv.config({ path: envPath });
+loadEnvFile(envPath);
 
 // Define validation schema
 const envSchema = z.object({

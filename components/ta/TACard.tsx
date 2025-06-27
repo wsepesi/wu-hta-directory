@@ -1,7 +1,7 @@
+import Image from 'next/image';
 import { Card, CardHeader, CardBody, CardFooter } from '../ui/Card';
 import { SerifHeading, BodyText } from '../ui/Typography';
 import { Button } from '../ui/Button';
-import { clsx } from 'clsx';
 
 interface Course {
   id: string;
@@ -33,9 +33,11 @@ export function TACard({ ta, onContact, onViewDetails, className }: TACardProps)
       <CardHeader>
         <div className="flex items-start gap-4">
           {ta.imageUrl ? (
-            <img
+            <Image
               src={ta.imageUrl}
               alt={ta.name}
+              width={64}
+              height={64}
               className="w-16 h-16 rounded-full object-cover"
             />
           ) : (

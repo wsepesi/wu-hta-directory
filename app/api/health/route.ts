@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { sql } from '@vercel/postgres';
+import { getDatabaseHealth } from '@/lib/db';
 
 export async function GET() {
   const health = {
@@ -12,24 +11,16 @@ export async function GET() {
       email: false,
       auth: false,
     },
-    details: {} as Record<string, any>,
+    details: {} as Record<string, unknown>,
   };
 
-  try {
-    // Check database connection
-    const startDb = Date.now();
-    await sql`SELECT 1`;
-    health.checks.database = true;
-    health.details.database = {
-      responseTime: Date.now() - startDb,
-      status: 'connected',
-    };
-  } catch (error) {
+  // Check database connection using the centralized db module
+  const dbHealth = await getDatabaseHealth();
+  health.checks.database = dbHealth.status === 'healthy';
+  health.details.database = dbHealth;
+  
+  if (dbHealth.status === 'unhealthy') {
     health.status = 'unhealthy';
-    health.details.database = {
-      status: 'disconnected',
-      error: 'Database connection failed',
-    };
   }
 
   // Check email configuration

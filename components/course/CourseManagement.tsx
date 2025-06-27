@@ -6,21 +6,34 @@ import Link from 'next/link';
 import { CourseForm } from './CourseForm';
 import { ProfessorForm } from '@/components/professor/ProfessorForm';
 import CourseOfferingForm from './CourseOfferingForm';
+import { BulkHistoricalOfferings } from './BulkHistoricalOfferings';
 import { MissingTAIndicator } from './MissingTAIndicator';
 import { EnhancedButton } from '@/components/ui/EnhancedButton';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { EnhancedErrorMessage } from '@/components/ui/EnhancedErrorMessage';
 import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
-import { ResponsiveTable } from '@/components/ui/ResponsiveTable';
 import { showToast } from '@/components/ui/EnhancedToast';
-import { useCourses } from '@/hooks/useCourses';
 import { apiClient } from '@/lib/api-client';
-import type { Course, Professor, CourseOffering } from '@/lib/types';
+import type { Course, Professor } from '@/lib/types';
+
+interface CourseOffering {
+  id: string;
+  semester: string;
+  year: number;
+  season: string;
+  taCount: number;
+}
+
+interface CourseWithOfferings {
+  id: string;
+  courseNumber: string;
+  courseName: string;
+  offerings: CourseOffering[];
+}
 
 interface CourseManagementProps {
   initialCourses: Course[];
   initialProfessors: Professor[];
-  coursesWithOfferings: any[];
+  coursesWithOfferings: CourseWithOfferings[];
   semesters: { value: string; label: string }[];
 }
 
@@ -28,13 +41,13 @@ export function CourseManagement({
   initialCourses,
   initialProfessors,
   coursesWithOfferings,
-  semesters,
 }: CourseManagementProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'courses' | 'professors' | 'offerings'>('courses');
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [showProfessorForm, setShowProfessorForm] = useState(false);
   const [showOfferingForm, setShowOfferingForm] = useState(false);
+  const [showBulkHistorical, setShowBulkHistorical] = useState(false);
   const [deletingCourse, setDeletingCourse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -52,6 +65,11 @@ export function CourseManagement({
 
   const handleOfferingSuccess = () => {
     setShowOfferingForm(false);
+    router.refresh();
+  };
+
+  const handleBulkHistoricalSuccess = () => {
+    setShowBulkHistorical(false);
     router.refresh();
   };
 
@@ -82,6 +100,7 @@ export function CourseManagement({
   };
 
   return (
+    <>
     <div className="space-y-8">
       {/* Tab Navigation */}
       <div className="border-b border-gray-200">
@@ -156,9 +175,6 @@ export function CourseManagement({
                         Course
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Pattern
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Current Offerings
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -172,7 +188,7 @@ export function CourseManagement({
                   <tbody className="bg-white divide-y divide-gray-200">
                     {coursesWithOfferings.map((course) => {
                       const currentOfferings = course.offerings.filter(
-                        (offering: any) => {
+                        (offering: CourseOffering) => {
                           const currentYear = new Date().getFullYear();
                           const currentMonth = new Date().getMonth();
                           const currentSeason = currentMonth >= 7 ? "Fall" : "Spring";
@@ -184,8 +200,8 @@ export function CourseManagement({
                         }
                       );
                       
-                      const totalTAs = currentOfferings.reduce((sum: number, off: any) => sum + off.taCount, 0);
-                      const needsTAs = currentOfferings.some((off: any) => off.taCount === 0);
+                      const totalTAs = currentOfferings.reduce((sum: number, off: CourseOffering) => sum + off.taCount, 0);
+                      const missingHTARecord = currentOfferings.some((off: CourseOffering) => off.taCount === 0);
 
                       return (
                         <tr key={course.id}>
@@ -199,18 +215,10 @@ export function CourseManagement({
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                              {course.offeringPattern === "both" && "Fall & Spring"}
-                              {course.offeringPattern === "fall_only" && "Fall Only"}
-                              {course.offeringPattern === "spring_only" && "Spring Only"}
-                              {course.offeringPattern === "sparse" && "Occasional"}
-                            </span>
-                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {currentOfferings.length > 0 ? (
                               <div>
-                                {currentOfferings.map((offering: any, idx: number) => (
+                                {currentOfferings.map((offering: CourseOffering, idx: number) => (
                                   <div key={offering.id}>
                                     {offering.semester}
                                     {idx < currentOfferings.length - 1 && ", "}
@@ -230,8 +238,8 @@ export function CourseManagement({
                                   size="sm"
                                   showLabel={false}
                                 />
-                                {needsTAs && (
-                                  <span className="text-xs text-red-600 font-medium">Needs TAs</span>
+                                {missingHTARecord && (
+                                  <span className="text-xs text-red-600 font-medium">No Head TA Recorded</span>
                                 )}
                               </div>
                             ) : (
@@ -254,11 +262,7 @@ export function CourseManagement({
                                 disabled={deletingCourse === course.id}
                                 className="text-red-600 hover:text-red-900 disabled:opacity-50"
                               >
-                                {deletingCourse === course.id ? (
-                                  <LoadingSpinner size="sm" />
-                                ) : (
-                                  'Delete'
-                                )}
+                                {deletingCourse === course.id ? 'Deleting...' : 'Delete'}
                               </button>
                             </div>
                           </td>
@@ -323,9 +327,17 @@ export function CourseManagement({
             <div className="px-4 py-5 sm:p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-medium text-gray-900">Create Course Offering</h2>
-                <EnhancedButton onClick={() => setShowOfferingForm(!showOfferingForm)}>
-                  {showOfferingForm ? 'Cancel' : 'Create New Offering'}
-                </EnhancedButton>
+                <div className="flex gap-2">
+                  <EnhancedButton 
+                    variant="secondary"
+                    onClick={() => setShowBulkHistorical(true)}
+                  >
+                    Bulk Create Historical
+                  </EnhancedButton>
+                  <EnhancedButton onClick={() => setShowOfferingForm(!showOfferingForm)}>
+                    {showOfferingForm ? 'Cancel' : 'Create New Offering'}
+                  </EnhancedButton>
+                </div>
               </div>
               
               {showOfferingForm && (
@@ -344,19 +356,19 @@ export function CourseManagement({
               <div className="space-y-3">
                 {coursesWithOfferings
                   .flatMap(course => 
-                    course.offerings.map((offering: any) => ({
+                    course.offerings.map((offering: CourseOffering) => ({
                       ...offering,
                       courseNumber: course.courseNumber,
                       courseName: course.courseName,
                     }))
                   )
-                  .sort((a: any, b: any) => {
+                  .sort((a: CourseOffering & { courseNumber: string; courseName: string }, b: CourseOffering & { courseNumber: string; courseName: string }) => {
                     // Sort by year desc, then by season (Fall before Spring)
                     if (a.year !== b.year) return b.year - a.year;
                     return a.season === 'Fall' ? -1 : 1;
                   })
                   .slice(0, 10)
-                  .map((offering: any) => (
+                  .map((offering: CourseOffering & { courseNumber: string; courseName: string }) => (
                     <div key={offering.id} className="border border-gray-200 rounded-lg p-3">
                       <div className="flex justify-between items-start">
                         <div>
@@ -398,6 +410,14 @@ export function CourseManagement({
         confirmText="Delete Course"
         variant="danger"
         loading={!!deletingCourse}
+      />
+
+      <BulkHistoricalOfferings
+        isOpen={showBulkHistorical}
+        onClose={() => setShowBulkHistorical(false)}
+        courses={initialCourses}
+        professors={initialProfessors}
+        onSuccess={handleBulkHistoricalSuccess}
       />
     </>
   );

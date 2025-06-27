@@ -1,22 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useUsers } from "@/hooks/useUsers";
 import { Button } from "@/components/ui/Button";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { SkeletonTable } from "@/components/ui/Skeleton";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
-import { logAuditEvent } from "@/lib/audit-logger";
-
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  gradYear: number | null;
-  createdAt: Date;
-  invitedBy: string | null;
-}
 
 export default function EnhancedUserManagement() {
   const { users, loading, error, refetch } = useUsers();
@@ -120,8 +108,21 @@ export default function EnhancedUserManagement() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <LoadingSpinner />
+      <div className="space-y-4">
+        {/* Filters and Search Skeleton */}
+        <div className="bg-white shadow rounded-lg p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="h-10 bg-gray-200 rounded-md animate-pulse" />
+            <div className="h-10 bg-gray-200 rounded-md animate-pulse" />
+            <div className="h-10 bg-gray-200 rounded-md animate-pulse" />
+            <div className="h-10 bg-gray-200 rounded-md animate-pulse" />
+          </div>
+        </div>
+
+        {/* User Table Skeleton */}
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <SkeletonTable rows={5} columns={6} className="" />
+        </div>
       </div>
     );
   }

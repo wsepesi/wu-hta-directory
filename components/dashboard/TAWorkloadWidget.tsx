@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface TAWorkload {
   id: string;
@@ -24,10 +24,58 @@ interface WorkloadStats {
   topWorkloads: TAWorkload[];
 }
 
+// Skeleton component for loading state
+function TAWorkloadSkeleton() {
+  return (
+    <div className="bg-white rounded-lg shadow">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-200">
+        <Skeleton variant="text" width="120px" height="24px" />
+      </div>
+      
+      <div className="p-6 space-y-6">
+        {/* Summary Stats */}
+        <div className="grid grid-cols-3 gap-4 text-center">
+          {[1, 2, 3].map((i) => (
+            <div key={i}>
+              <Skeleton variant="text" width="48px" height="32px" className="mx-auto mb-2" />
+              <Skeleton variant="text" width="80px" height="16px" className="mx-auto" />
+            </div>
+          ))}
+        </div>
+
+        {/* Average Utilization */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <Skeleton variant="text" width="140px" height="16px" />
+            <Skeleton variant="text" width="48px" height="16px" />
+          </div>
+          <Skeleton variant="rectangular" width="100%" height="8px" className="rounded-full" />
+        </div>
+
+        {/* Top Workloads */}
+        <div>
+          <Skeleton variant="text" width="120px" height="16px" className="mb-3" />
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="flex items-center flex-1">
+                  <Skeleton variant="text" width="150px" height="16px" className="mr-2" />
+                  <Skeleton variant="text" width="80px" height="14px" />
+                </div>
+                <Skeleton variant="rectangular" width="60px" height="24px" className="rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TAWorkloadWidget() {
   const [stats, setStats] = useState<WorkloadStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     loadWorkloadStats();
@@ -44,14 +92,19 @@ export function TAWorkloadWidget() {
       // Calculate workload statistics
       const taWorkloads = new Map<string, TAWorkload>();
       
-      assignments.forEach((assignment: any) => {
-        const taId = assignment.user?.id;
-        if (!taId) return;
+      assignments.forEach((assignment: unknown) => {
+        const typedAssignment = assignment as {
+          user?: { id: string; firstName: string; lastName: string };
+          hoursPerWeek?: number;
+          courseOffering?: { course?: { courseNumber: string } };
+        };
+        const taId = typedAssignment.user?.id;
+        if (!taId || !typedAssignment.user) return;
         
         if (!taWorkloads.has(taId)) {
           taWorkloads.set(taId, {
             id: taId,
-            name: `${assignment.user.firstName} ${assignment.user.lastName}`,
+            name: `${typedAssignment.user.firstName} ${typedAssignment.user.lastName}`,
             currentHours: 0,
             maxHours: 20, // Default max hours
             courseCount: 0,
@@ -60,11 +113,11 @@ export function TAWorkloadWidget() {
         }
         
         const workload = taWorkloads.get(taId)!;
-        workload.currentHours += assignment.hoursPerWeek || 10;
+        workload.currentHours += typedAssignment.hoursPerWeek || 10;
         workload.courseCount += 1;
         workload.courses.push({
-          courseNumber: assignment.courseOffering?.course?.courseNumber || 'Unknown',
-          hoursPerWeek: assignment.hoursPerWeek || 10,
+          courseNumber: typedAssignment.courseOffering?.course?.courseNumber || 'Unknown',
+          hoursPerWeek: typedAssignment.hoursPerWeek || 10,
         });
       });
 
@@ -99,11 +152,7 @@ export function TAWorkloadWidget() {
   };
 
   if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6 flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
+    return <TAWorkloadSkeleton />;
   }
 
   if (!stats) {
@@ -155,13 +204,13 @@ export function TAWorkloadWidget() {
         {/* Top Workloads */}
         <div>
           <h4 className="text-sm font-medium text-gray-900 mb-3">
-            {expanded ? 'All TA Workloads' : 'Top 5 Workloads'}
+            Top 5 Workloads
           </h4>
           <div className="space-y-2">
             {stats.topWorkloads.map((ta) => (
               <div key={ta.id} className="flex items-center justify-between">
                 <Link
-                  href={`/people/${ta.id}`}
+                  href={`/profile/${ta.id}`}
                   className="flex items-center flex-1 min-w-0 hover:text-indigo-600"
                 >
                   <span className="text-sm truncate">{ta.name}</span>

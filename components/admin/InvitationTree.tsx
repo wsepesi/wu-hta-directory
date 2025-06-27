@@ -49,7 +49,7 @@ export default function InvitationTree({
         
         <div className="flex-1 min-w-0">
           <Link
-            href={`/people/${node.user.id}`}
+            href={`/profile/${node.user.id}`}
             className="text-sm font-medium text-gray-900 hover:text-indigo-600"
           >
             {node.user.firstName} {node.user.lastName}

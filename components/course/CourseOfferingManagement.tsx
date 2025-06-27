@@ -4,12 +4,10 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { TAAssignmentModal } from './TAAssignmentModal';
+import { HeadTARecordingModalWrapper } from './HTARecordingModalWrapper';
+import { HeadTAStatusDisplay } from '@/components/ta/HTAStatusDisplay';
 import { useCourseOfferings } from '@/hooks/useCourses';
 import { useProfessors } from '@/hooks/useProfessors';
-import { apiClient } from '@/lib/api-client';
-import Link from 'next/link';
 
 interface CourseOffering {
   id: string;
@@ -30,6 +28,10 @@ interface CourseOffering {
       id: string;
       firstName: string;
       lastName: string;
+      isUnclaimed?: boolean;
+      invitationSent?: Date;
+      recordedBy?: string;
+      recordedAt?: Date;
     };
     hoursPerWeek: number;
   }>;
@@ -92,8 +94,8 @@ export function CourseOfferingManagement({
         professorId: '',
       });
       onUpdate();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create offering');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create offering');
     } finally {
       setLoading(false);
     }
@@ -104,34 +106,34 @@ export function CourseOfferingManagement({
       await updateOffering(offeringId, { professorId: professorId || null });
       setEditingOffering(null);
       onUpdate();
-    } catch (err: any) {
-      setError(err.message || 'Failed to update professor');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update professor');
     }
   };
 
   const handleDeleteOffering = async (offeringId: string) => {
-    if (!confirm('Are you sure you want to delete this offering? This will also remove all TA assignments.')) {
+    if (!confirm('Are you sure you want to delete this offering? This will also remove all Head TA records.')) {
       return;
     }
 
     try {
       await deleteOffering(offeringId);
       onUpdate();
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete offering');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete offering');
     }
   };
 
   const handleRemoveTA = async (offeringId: string, assignmentId: string) => {
-    if (!confirm('Are you sure you want to remove this TA assignment?')) {
+    if (!confirm('Are you sure you want to remove this Head TA record?')) {
       return;
     }
 
     try {
       await fetch(`/api/ta-assignments/${assignmentId}`, { method: 'DELETE' });
       onUpdate();
-    } catch (err: any) {
-      setError(err.message || 'Failed to remove TA');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to remove Head TA');
     }
   };
 
@@ -189,7 +191,7 @@ export function CourseOfferingManagement({
                 disabled={loading}
                 size="sm"
               >
-                {loading ? <LoadingSpinner size="sm" /> : 'Create'}
+                {loading ? 'Creating...' : 'Create'}
               </Button>
               <Button
                 variant="secondary"
@@ -264,24 +266,25 @@ export function CourseOfferingManagement({
                       variant="secondary"
                       onClick={() => setAssigningTA(offering.id)}
                     >
-                      Assign TA
+                      Record Head TA
                     </Button>
                   </div>
                   {offering.taAssignments.length === 0 ? (
-                    <p className="text-sm text-yellow-600">No TAs assigned</p>
+                    <p className="text-sm text-yellow-600">No HTAs recorded</p>
                   ) : (
                     <div className="space-y-2">
                       {offering.taAssignments.map((assignment) => (
                         <div key={assignment.id} className="flex items-center justify-between">
-                          <Link
-                            href={`/people/${assignment.user.id}`}
-                            className="text-sm text-indigo-600 hover:text-indigo-500"
-                          >
-                            {assignment.user.firstName} {assignment.user.lastName}
-                            <span className="text-gray-500 ml-1">
+                          <div className="flex items-center gap-2">
+                            <HeadTAStatusDisplay 
+                              ta={assignment.user}
+                              showInviteButton={true}
+                              className="text-sm"
+                            />
+                            <span className="text-gray-500 text-sm">
                               ({assignment.hoursPerWeek}h/week)
                             </span>
-                          </Link>
+                          </div>
                           <button
                             onClick={() => handleRemoveTA(offering.id, assignment.id)}
                             className="text-xs text-red-600 hover:text-red-500"
@@ -309,9 +312,9 @@ export function CourseOfferingManagement({
         ))}
       </div>
 
-      {/* TA Assignment Modal */}
+      {/* Head TA Recording Modal */}
       {assigningTA && (
-        <TAAssignmentModal
+        <HeadTARecordingModalWrapper
           courseOfferingId={assigningTA}
           courseNumber={courseNumber}
           courseName={courseName}

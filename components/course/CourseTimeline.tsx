@@ -64,7 +64,7 @@ export function CourseTimeline({ courses, onCourseClick, className }: CourseTime
 
       {/* Timeline groups */}
       <div className="space-y-8">
-        {groupedCourses.map((group, groupIndex) => (
+        {groupedCourses.map((group) => (
           <div key={`${group.year}-${group.semester}`} className="relative">
             {/* Timeline dot */}
             <div className="absolute left-8 w-4 h-4 bg-charcoal rounded-full -translate-x-1/2 mt-2" />
@@ -85,7 +85,7 @@ export function CourseTimeline({ courses, onCourseClick, className }: CourseTime
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {group.courses.map(course => {
-                  const needsTAs = course.tas.length < course.maxTAs;
+                  const missingHTARecord = course.tas.length < course.maxTAs;
                   
                   return (
                     <div
@@ -94,16 +94,16 @@ export function CourseTimeline({ courses, onCourseClick, className }: CourseTime
                       className={clsx(
                         'bg-white rounded-lg border p-4 transition-all duration-200',
                         onCourseClick && 'cursor-pointer hover:shadow-md hover:border-charcoal',
-                        needsTAs ? 'border-yellow-300' : 'border-gray-200'
+                        missingHTARecord ? 'border-yellow-300' : 'border-gray-200'
                       )}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="font-serif font-semibold text-charcoal">
                           {course.code}
                         </h4>
-                        {needsTAs && (
+                        {missingHTARecord && (
                           <span className="text-xs text-yellow-600 font-medium">
-                            Needs TAs
+                            No Head TA Recorded
                           </span>
                         )}
                       </div>
@@ -115,7 +115,7 @@ export function CourseTimeline({ courses, onCourseClick, className }: CourseTime
                           {course.tas.length}/{course.maxTAs} TAs
                         </span>
                         <div className="flex -space-x-2">
-                          {course.tas.slice(0, 3).map((ta, idx) => (
+                          {course.tas.slice(0, 3).map((ta) => (
                             <div
                               key={ta.id}
                               className="w-6 h-6 rounded-full bg-gray-300 border-2 border-white flex items-center justify-center"

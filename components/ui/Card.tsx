@@ -11,16 +11,16 @@ interface CardProps {
 
 export function Card({ children, className, variant = 'primary', hoverable = false, onClick }: CardProps) {
   const variantStyles = {
-    primary: 'bg-white shadow-md border-gray-100',
-    secondary: 'bg-gray-50 shadow-sm border-gray-200'
+    primary: 'bg-white border-charcoal',
+    secondary: 'bg-white border-charcoal/50'
   };
 
   return (
     <div
       className={clsx(
-        'rounded-lg p-6 border',
+        'p-6 border',
         variantStyles[variant],
-        hoverable && 'transition-all duration-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer',
+        hoverable && 'transition-opacity duration-200 hover:opacity-80 cursor-pointer',
         onClick && 'cursor-pointer',
         className
       )}
@@ -64,7 +64,7 @@ interface CardFooterProps {
 
 export function CardFooter({ children, className }: CardFooterProps) {
   return (
-    <div className={clsx('mt-4 pt-4 border-t border-gray-100', className)}>
+    <div className={clsx('mt-4 pt-4 border-t border-charcoal/20', className)}>
       {children}
     </div>
   );

@@ -1,199 +1,164 @@
 import { Metadata } from "next";
-import { requireAuth } from "@/lib/auth-utils";
-import Link from "next/link";
-import { courseOfferingRepository } from "@/lib/repositories/course-offerings";
-import { taAssignmentRepository } from "@/lib/repositories/ta-assignments";
-import { invitationRepository } from "@/lib/repositories/invitations";
-import { MissingTAWidget } from "@/components/dashboard/MissingTAWidget";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import CleanLayout, { CleanPageHeader } from "@/components/layout/CleanLayout";
+import { EnhancedDashboardStats } from "@/components/dashboard/EnhancedDashboardStats";
+import { EnhancedMissingTAWidget } from "@/components/dashboard/EnhancedMissingTAWidget";
+import { EnhancedTAWorkloadWidget } from "@/components/dashboard/EnhancedTAWorkloadWidget";
+import { EnhancedQuickActions } from "@/components/dashboard/EnhancedQuickActions";
+import { EnhancedDashboardNavigation } from "@/components/dashboard/EnhancedDashboardNavigation";
+import { TAWorkloadSkeleton } from "@/components/dashboard/TAWorkloadSkeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: "Dashboard - WU Head TA Directory",
-  description: "Admin dashboard for managing courses and TAs",
+  description: "View current statistics and courses without recorded HTAs",
 };
 
-export default async function DashboardPage() {
-  const user = await requireAuth();
-  
-  if (user.role !== 'admin') {
-    return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900">Access Denied</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            This page is only accessible to administrators.
-          </p>
-          <Link href="/" className="mt-4 text-indigo-600 hover:text-indigo-500">
-            Go back home
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Get statistics
-  const allOfferings = await courseOfferingRepository.findAll();
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
-  const currentSeason = currentMonth >= 7 ? "Fall" : "Spring";
-  
-  const currentOfferings = allOfferings.filter(o => 
-    o.year === currentYear && o.season === currentSeason
-  );
-  
-  const allTAAssignments = await taAssignmentRepository.findAll();
-  const currentAssignments = await taAssignmentRepository.findBySemester(`${currentSeason} ${currentYear}`);
-  
-  const pendingInvitations = await invitationRepository.findPending();
-  
-  // Calculate missing TAs
-  const offeringsWithoutTAs = currentOfferings.filter(offering => {
-    const hasTA = currentAssignments.some(a => a.courseOfferingId === offering.id);
-    return !hasTA;
-  });
-
+// Skeleton for the stats section
+function StatsCardsSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-gray-900">
-            Admin Dashboard
-          </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Welcome back, {user.firstName}! Here's your overview.
-          </p>
+    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="text-center">
+          <Skeleton variant="text" width="60px" height="48px" className="mx-auto mb-2" />
+          <Skeleton variant="text" width="120px" height="16px" className="mx-auto mb-1" />
+          <Skeleton variant="text" width="100px" height="14px" className="mx-auto" />
         </div>
+      ))}
+    </div>
+  );
+}
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Link href="/manage/courses">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900">Manage Courses</h3>
-                <p className="mt-2 text-sm text-gray-500">
-                  Add courses, create offerings, and manage professors
-                </p>
+// Skeleton for Missing TAs Widget
+function MissingTASkeleton() {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <Skeleton variant="text" width="300px" height="24px" />
+        <Skeleton variant="text" width="80px" height="16px" />
+      </div>
+      <div className="space-y-6">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="border-t border-charcoal/20 pt-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <Skeleton variant="text" width="250px" height="24px" className="mb-2" />
+                <Skeleton variant="text" width="300px" height="16px" className="mb-1" />
+                <Skeleton variant="text" width="120px" height="16px" />
               </div>
-            </Card>
-          </Link>
-
-          <Link href="/dashboard/missing-tas">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900">Missing TAs</h3>
-                <p className="mt-2 text-sm text-gray-500">
-                  {offeringsWithoutTAs.length} courses need TAs
-                </p>
+              <div className="ml-6 flex flex-col space-y-2">
+                <Skeleton variant="text" width="100px" height="16px" />
+                <Skeleton variant="text" width="100px" height="16px" />
               </div>
-            </Card>
-          </Link>
-
-          <Link href="/auth/invite">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900">Send Invitations</h3>
-                <p className="mt-2 text-sm text-gray-500">
-                  Invite new Head TAs to join
-                </p>
-              </div>
-            </Card>
-          </Link>
-
-          <Link href="/manage/invitations">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="p-6">
-                <h3 className="text-lg font-medium text-gray-900">Manage Invitations</h3>
-                <p className="mt-2 text-sm text-gray-500">
-                  {pendingInvitations.length} pending invitations
-                </p>
-              </div>
-            </Card>
-          </Link>
-        </div>
-
-        {/* Statistics Overview */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <dt className="text-sm font-medium text-gray-500 truncate">
-                Current Offerings
-              </dt>
-              <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                {currentOfferings.length}
-              </dd>
-              <p className="mt-2 text-xs text-gray-500">
-                {currentSeason} {currentYear}
-              </p>
             </div>
           </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <dt className="text-sm font-medium text-gray-500 truncate">
-                Active TAs
-              </dt>
-              <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                {currentAssignments.length}
-              </dd>
-              <p className="mt-2 text-xs text-gray-500">
-                This semester
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <dt className="text-sm font-medium text-gray-500 truncate">
-                Missing TAs
-              </dt>
-              <dd className="mt-1 text-3xl font-semibold text-red-600">
-                {offeringsWithoutTAs.length}
-              </dd>
-              <p className="mt-2 text-xs text-gray-500">
-                Need assignment
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <dt className="text-sm font-medium text-gray-500 truncate">
-                Coverage Rate
-              </dt>
-              <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                {currentOfferings.length > 0 
-                  ? Math.round((currentOfferings.length - offeringsWithoutTAs.length) / currentOfferings.length * 100)
-                  : 0}%
-              </dd>
-              <p className="mt-2 text-xs text-gray-500">
-                Courses with TAs
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Missing TAs Widget */}
-        <div className="mb-8">
-          <MissingTAWidget />
-        </div>
-
-        {/* Navigation Links */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          <Link href="/courses" className="text-sm text-indigo-600 hover:text-indigo-500">
-            View All Courses →
-          </Link>
-          <Link href="/people" className="text-sm text-indigo-600 hover:text-indigo-500">
-            View All People →
-          </Link>
-          <Link href="/professors" className="text-sm text-indigo-600 hover:text-indigo-500">
-            View All Professors →
-          </Link>
-          <Link href="/semesters" className="text-sm text-indigo-600 hover:text-indigo-500">
-            View by Semester →
-          </Link>
-        </div>
+        ))}
       </div>
     </div>
+  );
+}
+
+// Skeleton for Quick Actions
+function QuickActionsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="border-t border-charcoal pt-4">
+          <Skeleton variant="text" width="150px" height="24px" className="mb-2" />
+          <Skeleton variant="text" width="200px" height="16px" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+export default async function DashboardPage() {
+  // Get session to check if user is authenticated
+  const session = await getServerSession(authOptions);
+  
+  // Redirect to home page if not authenticated
+  if (!session?.user) {
+    redirect('/');
+  }
+  
+  const isAdmin = session.user.role === 'admin';
+
+  return (
+    <CleanLayout maxWidth="7xl">
+      <CleanPageHeader
+        title="TA Dashboard"
+        subtitle={session?.user ? `Welcome back, ${session.user.firstName}` : 'WU Computer Science'}
+        description="Current statistics and courses without recorded HTAs"
+      />
+
+      {/* Quick Actions - Only for authenticated admins */}
+      {isAdmin && (
+        <section className="mb-16">
+          <h2 className="font-serif text-2xl text-charcoal mb-8">Quick Actions</h2>
+          <Suspense fallback={<QuickActionsSkeleton />}>
+            <EnhancedQuickActions />
+          </Suspense>
+        </section>
+      )}
+
+      {/* Sign in prompt for unauthenticated users */}
+      {!session.user && (
+        <section className="mb-16">
+          <div className="border-t border-charcoal pt-8">
+            <p className="font-serif text-lg text-charcoal mb-4">
+              Want to manage courses and TAs?
+            </p>
+            <a 
+              href="/auth/signin" 
+              className="inline-block font-serif text-sm uppercase tracking-wider text-charcoal border border-charcoal px-6 py-3 hover:bg-charcoal hover:text-white transition-colors duration-200"
+            >
+              Sign in to manage
+            </a>
+          </div>
+        </section>
+      )}
+
+      {/* Statistics Overview - Available to all users */}
+      <section className="mb-16">
+        <h2 className="font-serif text-2xl text-charcoal mb-8">Current Statistics</h2>
+        <Suspense fallback={<StatsCardsSkeleton />}>
+          <EnhancedDashboardStats />
+        </Suspense>
+      </section>
+
+      {/* Missing TAs Widget - Available to all users */}
+      <section className="mb-16">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="font-serif text-2xl text-charcoal">Courses Without Recorded HTAs</h2>
+          {!session.user && (
+            <p className="font-serif text-sm italic text-charcoal/60">
+              Sign in to record HTAs
+            </p>
+          )}
+        </div>
+        <Suspense fallback={<MissingTASkeleton />}>
+          <EnhancedMissingTAWidget isAuthenticated={!!session.user} isAdmin={isAdmin} />
+        </Suspense>
+      </section>
+
+      {/* TA Workload Widget - Only for authenticated users */}
+      {session.user && (
+        <section className="mb-16">
+          <h2 className="font-serif text-2xl text-charcoal mb-8">TA Workload</h2>
+          <Suspense fallback={<TAWorkloadSkeleton />}>
+            <EnhancedTAWorkloadWidget />
+          </Suspense>
+        </section>
+      )}
+
+      {/* Navigation Links - Available to all users */}
+      <EnhancedDashboardNavigation />
+    </CleanLayout>
   );
 }

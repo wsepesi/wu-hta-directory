@@ -12,7 +12,7 @@ interface CacheEntry<T> {
 }
 
 class CacheManager {
-  private cache: Map<string, CacheEntry<any>> = new Map();
+  private cache: Map<string, CacheEntry<unknown>> = new Map();
   private cleanupInterval: NodeJS.Timeout | null = null;
   
   constructor() {
@@ -113,7 +113,7 @@ class CacheManager {
     let expiredCount = 0;
     const now = Date.now();
     
-    for (const [key, entry] of this.cache.entries()) {
+    for (const [, entry] of this.cache.entries()) {
       totalSize += JSON.stringify(entry.data).length;
       if (now - entry.timestamp > entry.ttl) {
         expiredCount++;
@@ -183,7 +183,7 @@ export const cacheKeys = {
   
   // Directory keys
   publicDirectory: () => 'directory:public',
-  directoryFiltered: (filters: Record<string, any>) => `directory:filtered:${JSON.stringify(filters)}`,
+  directoryFiltered: (filters: Record<string, unknown>) => `directory:filtered:${JSON.stringify(filters)}`,
   
   // Analytics keys
   userGrowth: (period: string) => `analytics:user-growth:${period}`,
@@ -200,11 +200,11 @@ export const cacheTTL = {
 };
 
 // Decorator for caching method results
-export function Cacheable(keyGenerator: (...args: any[]) => string, ttl?: number) {
-  return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
+export function Cacheable(keyGenerator: (...args: unknown[]) => string, ttl?: number) {
+  return function (_target: unknown, _propertyName: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
     
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (...args: unknown[]) {
       const cacheKey = keyGenerator(...args);
       
       return cache.getOrSet(

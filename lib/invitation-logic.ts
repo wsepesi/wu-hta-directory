@@ -1,10 +1,10 @@
 import { db } from './db';
-import { invitations, users, courseOfferings, courses, taAssignments } from './db/schema';
+import { invitations, users, courseOfferings } from './db/schema';
 import { eq, and, gte, sql, isNull } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
-import { sendInvitationEmail, sendTargetedInvitationEmail } from './email-service';
+import { sendInvitationEmail, sendTargetedInvitationEmail, sendClaimProfileEmail } from './email-service';
 
-interface InvitationResult {
+export interface InvitationResult {
   success: boolean;
   invitation?: {
     id: string;
@@ -302,7 +302,7 @@ export async function sendTargetedInvitation(
  */
 export async function markInvitationUsed(token: string): Promise<boolean> {
   try {
-    const result = await db
+    await db
       .update(invitations)
       .set({ usedAt: new Date() })
       .where(
@@ -391,7 +391,7 @@ export async function getUserInvitationStats(userId: string): Promise<{
  */
 export async function cleanupExpiredInvitations(): Promise<number> {
   try {
-    const result = await db
+    await db
       .delete(invitations)
       .where(
         and(
@@ -404,5 +404,215 @@ export async function cleanupExpiredInvitations(): Promise<number> {
   } catch (error) {
     console.error('Error cleaning up invitations:', error);
     return 0;
+  }
+}
+
+interface ClaimProfileInvitationData {
+  unclaimedUserId: string;
+  invitedBy: string;
+  recipientEmail: string;
+  recipientName: string;
+  personalMessage?: string;
+  courseOfferingId?: string;
+}
+
+/**
+ * Send invitation to claim an unclaimed profile
+ */
+export async function sendClaimProfileInvitation(
+  data: ClaimProfileInvitationData
+): Promise<InvitationResult> {
+  try {
+    // Validate inviter
+    const inviter = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, data.invitedBy))
+      .limit(1);
+    
+    if (inviter.length === 0) {
+      return {
+        success: false,
+        error: 'Inviter not found',
+      };
+    }
+    
+    // Validate unclaimed profile exists and is unclaimed
+    const unclaimedProfile = await db
+      .select({
+        id: users.id,
+        isUnclaimed: users.isUnclaimed,
+      })
+      .from(users)
+      .where(eq(users.id, data.unclaimedUserId))
+      .limit(1);
+    
+    if (unclaimedProfile.length === 0) {
+      return {
+        success: false,
+        error: 'Unclaimed profile not found',
+      };
+    }
+    
+    if (!unclaimedProfile[0].isUnclaimed) {
+      return {
+        success: false,
+        error: 'Profile is already claimed',
+      };
+    }
+    
+    // Check for existing pending invitation
+    const existingInvitation = await db
+      .select({ id: invitations.id })
+      .from(invitations)
+      .where(
+        and(
+          eq(invitations.email, data.recipientEmail),
+          gte(invitations.expiresAt, new Date()),
+          isNull(invitations.usedAt)
+        )
+      )
+      .limit(1);
+    
+    if (existingInvitation.length > 0) {
+      return {
+        success: false,
+        error: 'An active invitation already exists for this email',
+      };
+    }
+    
+    // Create invitation with profile claim context
+    const token = generateInvitationToken();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 14); // 14 days for claim invitations
+    
+    const newInvitation = await db
+      .insert(invitations)
+      .values({
+        email: data.recipientEmail,
+        invitedBy: data.invitedBy,
+        token,
+        expiresAt,
+      })
+      .returning({
+        id: invitations.id,
+        email: invitations.email,
+        token: invitations.token,
+        expiresAt: invitations.expiresAt,
+      });
+    
+    // Send claim profile invitation email
+    const inviterName = `${inviter[0].firstName} ${inviter[0].lastName}`;
+    await sendClaimProfileEmail({
+      to: data.recipientEmail,
+      recipientName: data.recipientName,
+      inviterName,
+      invitationToken: token,
+      unclaimedProfileId: data.unclaimedUserId,
+      personalMessage: data.personalMessage,
+      expirationDays: 14,
+    });
+    
+    return {
+      success: true,
+      invitation: newInvitation[0],
+    };
+  } catch (error) {
+    console.error('Error sending claim profile invitation:', error);
+    return {
+      success: false,
+      error: 'Failed to send claim profile invitation',
+    };
+  }
+}
+
+interface BulkClaimInvitationData {
+  profileIds: string[];
+  invitedBy: string;
+  personalMessage?: string;
+}
+
+interface BulkInvitationResult {
+  sent: number;
+  failed: number;
+  errors: Array<{
+    profileId: string;
+    error: string;
+  }>;
+}
+
+/**
+ * Send bulk invitations to claim unclaimed profiles
+ */
+export async function sendBulkClaimInvitations(
+  data: BulkClaimInvitationData
+): Promise<BulkInvitationResult> {
+  const result: BulkInvitationResult = {
+    sent: 0,
+    failed: 0,
+    errors: [],
+  };
+  
+  try {
+    // Get all unclaimed profiles
+    const profiles = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        isUnclaimed: users.isUnclaimed,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.isUnclaimed, true),
+          sql`${users.id} = ANY(${data.profileIds})`
+        )
+      );
+    
+    // Send invitation to each profile
+    for (const profile of profiles) {
+      const invitationResult = await sendClaimProfileInvitation({
+        unclaimedUserId: profile.id,
+        invitedBy: data.invitedBy,
+        recipientEmail: profile.email,
+        recipientName: `${profile.firstName} ${profile.lastName}`,
+        personalMessage: data.personalMessage,
+      });
+      
+      if (invitationResult.success) {
+        result.sent++;
+      } else {
+        result.failed++;
+        result.errors.push({
+          profileId: profile.id,
+          error: invitationResult.error || 'Unknown error',
+        });
+      }
+      
+      // Add small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error sending bulk claim invitations:', error);
+    return {
+      sent: result.sent,
+      failed: data.profileIds.length - result.sent,
+      errors: [
+        ...result.errors,
+        {
+          profileId: 'bulk-operation',
+          error: 'Failed to complete bulk invitation operation',
+        },
+      ],
+    };
   }
 }

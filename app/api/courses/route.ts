@@ -5,7 +5,7 @@ import { courseRepository } from '@/lib/repositories/courses';
 import { userRepository } from '@/lib/repositories/users';
 import { logApiError } from '@/lib/error-logger';
 import { courseSchema, validateData } from '@/lib/validation';
-import type { ApiResponse, Course, CourseFilters, CreateCourseInput } from '@/lib/types';
+import type { ApiResponse, Course, CreateCourseInput } from '@/lib/types';
 
 /**
  * GET /api/courses
@@ -13,32 +13,17 @@ import type { ApiResponse, Course, CourseFilters, CreateCourseInput } from '@/li
  */
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' } as ApiResponse<never>,
-        { status: 401 }
-      );
-    }
+    // Public endpoint - no authentication required for GET
 
-    // Parse query parameters for filters
+    // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
-    const filters: CourseFilters = {};
-
-    const offeringPattern = searchParams.get('offeringPattern');
-    if (offeringPattern && ['both', 'fall_only', 'spring_only', 'sparse'].includes(offeringPattern)) {
-      filters.offeringPattern = offeringPattern as CourseFilters['offeringPattern'];
-    }
-
-    // Search query
     const search = searchParams.get('search');
     
     let courses: Course[];
     if (search) {
       courses = await courseRepository.search(search);
     } else {
-      courses = await courseRepository.findAll(filters);
+      courses = await courseRepository.findAll();
     }
 
     return NextResponse.json(
@@ -94,7 +79,7 @@ export async function POST(request: NextRequest) {
     let body;
     try {
       body = await request.json();
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid JSON in request body' } as ApiResponse<never>,
         { status: 400 }

@@ -10,13 +10,13 @@ interface TypographyProps {
 
 export function Typography({ variant, children, className, as }: TypographyProps) {
   const variantStyles = {
-    h1: 'font-sans text-3xl md:text-4xl font-bold text-charcoal',
-    h2: 'font-sans text-2xl md:text-3xl font-bold text-charcoal',
-    h3: 'font-sans text-xl md:text-2xl font-semibold text-charcoal',
-    h4: 'font-sans text-lg md:text-xl font-semibold text-charcoal',
-    body: 'font-sans text-base text-charcoal leading-relaxed',
-    small: 'font-sans text-sm text-charcoal',
-    script: 'font-script text-4xl md:text-5xl lg:text-6xl font-semibold text-charcoal',
+    h1: 'text-3xl md:text-4xl font-bold text-charcoal',
+    h2: 'text-2xl md:text-3xl font-bold text-charcoal',
+    h3: 'text-xl md:text-2xl font-semibold text-charcoal',
+    h4: 'text-lg md:text-xl font-semibold text-charcoal',
+    body: 'text-base text-charcoal leading-relaxed',
+    small: 'text-sm text-charcoal',
+    script: 'text-4xl md:text-5xl lg:text-6xl font-semibold text-charcoal',
     serif: 'font-serif text-2xl md:text-3xl lg:text-4xl font-bold text-charcoal',
   };
 
@@ -47,6 +47,10 @@ export function ScriptHeading({ children, className }: { children: ReactNode; cl
 
 export function SerifHeading({ children, className }: { children: ReactNode; className?: string }) {
   return <Typography variant="serif" className={className}>{children}</Typography>;
+}
+
+export function SansHeading({ children, className }: { children: ReactNode; className?: string }) {
+  return <Typography variant="h2" className={className}>{children}</Typography>;
 }
 
 export function BodyText({ children, className }: { children: ReactNode; className?: string }) {

@@ -3,13 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { users, courses, professors, taAssignments, invitations, courseOfferings, auditLogs } from "@/lib/db/schema";
-import { eq, desc, and, gt, isNull } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { logAuditEvent } from "@/lib/audit-logger";
 
 interface ReportParams {
-  params: {
+  params: Promise<{
     reportId: string;
-  };
+  }>;
 }
 
 export async function GET(request: NextRequest, { params }: ReportParams) {
@@ -21,7 +21,8 @@ export async function GET(request: NextRequest, { params }: ReportParams) {
     }
 
     const format = request.nextUrl.searchParams.get("format") || "csv";
-    const reportId = params.reportId;
+    const resolvedParams = await params;
+    const reportId = resolvedParams.reportId;
 
     // Log the report generation
     await logAuditEvent({
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest, { params }: ReportParams) {
       metadata: { reportId, format }
     });
 
-    let data: any;
+    let data: unknown;
     let filename: string;
 
     switch (reportId) {
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest, { params }: ReportParams) {
     let contentType: string;
 
     if (format === "csv" && reportId !== "audit-log") {
-      responseBody = convertToCSV(data);
+      responseBody = convertToCSV(data as Record<string, unknown>[]);
       contentType = "text/csv";
     } else {
       responseBody = JSON.stringify(data, null, 2);
@@ -253,7 +254,7 @@ async function generateUserActivity() {
   }));
 }
 
-function convertToCSV(data: any[]): string {
+function convertToCSV(data: Record<string, unknown>[]): string {
   if (data.length === 0) return "";
 
   // Get headers from the first object

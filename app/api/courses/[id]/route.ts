@@ -15,14 +15,7 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' } as ApiResponse<never>,
-        { status: 401 }
-      );
-    }
+    // Public endpoint - no authentication required for GET
 
     const { id } = await params;
 
@@ -89,13 +82,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     delete body.id;
     delete body.createdAt;
 
-    // Validate offering pattern if provided
-    if (body.offeringPattern && !['both', 'fall_only', 'spring_only', 'sparse'].includes(body.offeringPattern)) {
-      return NextResponse.json(
-        { error: 'Invalid offering pattern' } as ApiResponse<never>,
-        { status: 400 }
-      );
-    }
+    // offeringPattern validation removed
 
     // Update course
     const updatedCourse = await courseRepository.update(id, body);

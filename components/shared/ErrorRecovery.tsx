@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { retry } from '@/lib/utils';
 
 interface ErrorRecoveryProps {
@@ -31,20 +30,7 @@ export function ErrorRecovery({
   const [retryCount, setRetryCount] = useState(0);
   const [countdown, setCountdown] = useState(0);
 
-  // Auto-retry logic with countdown
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1);
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    } else if (countdown === 0 && retryCount > 0 && retryCount <= maxRetries) {
-      handleRetry();
-    }
-  }, [countdown, retryCount]);
-
-  const handleRetry = async () => {
+  const handleRetry = useCallback(async () => {
     if (!retryFn) return;
     
     setIsRetrying(true);
@@ -69,7 +55,20 @@ export function ErrorRecovery({
     } finally {
       setIsRetrying(false);
     }
-  };
+  }, [retryFn, onRetrySuccess, retryCount, maxRetries, retryDelay, onRetryFailure]);
+
+  // Auto-retry logic with countdown
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    } else if (countdown === 0 && retryCount > 0 && retryCount <= maxRetries) {
+      handleRetry();
+    }
+  }, [countdown, retryCount, maxRetries, handleRetry]);
 
   const getErrorMessage = () => {
     if (customMessage) return customMessage;
@@ -84,7 +83,7 @@ export function ErrorRecovery({
     } else if (error.message.includes('404')) {
       return 'The requested resource was not found.';
     } else if (error.message.includes('401') || error.message.includes('403')) {
-      return 'You don\'t have permission to access this resource.';
+      return 'You don&apos;t have permission to access this resource.';
     } else if (error.message.includes('500')) {
       return 'Server error. Please try again later.';
     }
@@ -125,13 +124,7 @@ export function ErrorRecovery({
             variant="primary"
             size="sm"
           >
-            {isRetrying ? (
-              <LoadingSpinner size="sm" />
-            ) : countdown > 0 ? (
-              `Retrying in ${countdown}s...`
-            ) : (
-              'Try Again'
-            )}
+            {isRetrying ? 'Retrying...' : countdown > 0 ? `Retrying in ${countdown}s...` : 'Try Again'}
           </Button>
         )}
         

@@ -2,14 +2,37 @@
 
 import { useEffect, useState } from "react";
 import ActivityFeed from "./ActivityFeed";
-import { LoadingSpinner } from "../ui/LoadingSpinner";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface ActivityItem {
   id: string;
   type: "user" | "invitation" | "course" | "professor" | "ta_assignment" | "system";
   description: string;
   timestamp: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
+}
+
+// Skeleton component for loading state
+function ActivityTrackerSkeleton() {
+  return (
+    <div>
+      <div className="mb-4 flex justify-between items-center">
+        <Skeleton variant="text" width="140px" height="24px" />
+        <Skeleton variant="text" width="60px" height="16px" />
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div key={i} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+            <Skeleton variant="circular" width={40} height={40} />
+            <div className="flex-1 space-y-2">
+              <Skeleton variant="text" width="80%" height="16px" />
+              <Skeleton variant="text" width="120px" height="14px" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function ActivityTracker() {
@@ -41,11 +64,7 @@ export default function ActivityTracker() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <LoadingSpinner />
-      </div>
-    );
+    return <ActivityTrackerSkeleton />;
   }
 
   if (error) {

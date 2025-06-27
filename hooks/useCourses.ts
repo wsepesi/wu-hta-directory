@@ -26,9 +26,7 @@ export const useCourses = (filters?: CourseFilters): UseCoursesReturn => {
 
     try {
       const queryParams = new URLSearchParams();
-      if (filters?.offeringPattern) {
-        queryParams.append('offeringPattern', filters.offeringPattern);
-      }
+      // Note: offeringPattern filter removed as patterns are determined from historical data
 
       const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
       const response = await apiClient.get<Course[]>(`/courses${query}`);
@@ -43,7 +41,7 @@ export const useCourses = (filters?: CourseFilters): UseCoursesReturn => {
     } finally {
       setLoading(false);
     }
-  }, [filters?.offeringPattern]);
+  }, [filters]);
 
   useEffect(() => {
     fetchCourses();
@@ -182,16 +180,27 @@ export const useCourseOfferings = () => {
     season: string;
     professorId: string | null;
   }) => {
+    console.log('[COURSE_OFFERING_HOOK] Starting createOffering with data:', data);
     setLoading(true);
     setError(null);
     try {
+      console.log('[COURSE_OFFERING_HOOK] Sending POST request to /course-offerings');
       const response = await apiClient.post('/course-offerings', data);
+      console.log('[COURSE_OFFERING_HOOK] API response:', response);
+      
       if (response.error) {
+        console.error('[COURSE_OFFERING_HOOK] API returned error:', response.error);
         throw new Error(response.error);
       }
+      
+      console.log('[COURSE_OFFERING_HOOK] Successfully created offering:', response.data);
       return response.data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create offering';
+      console.error('[COURSE_OFFERING_HOOK] Error in createOffering:', {
+        error: errorMessage,
+        originalError: err
+      });
       setError(errorMessage);
       throw err;
     } finally {

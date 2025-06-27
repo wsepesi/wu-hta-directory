@@ -51,6 +51,7 @@ pnpm-debug.log*
 /coverage/
 /.nyc_output
 .jest/
+/test/.test-db-url
 
 # Runtime data
 pids

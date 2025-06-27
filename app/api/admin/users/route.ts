@@ -2,16 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { userRepository } from '@/lib/repositories/users';
+import { taAssignmentRepository } from '@/lib/repositories/hta-records';
+import { invitationRepository } from '@/lib/repositories/invitations';
 import { db } from '@/lib/db';
-import { users, taAssignments, invitations } from '@/lib/db/schema';
-import { eq, desc, asc } from 'drizzle-orm';
-import type { ApiResponse, UserWithInviter } from '@/lib/types';
+import { users } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
+import type { ApiResponse } from '@/lib/types';
 
 /**
  * GET /api/admin/users
  * Get all users with additional admin information (admin only)
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Check authentication and admin role
     const session = await getServerSession(authOptions);

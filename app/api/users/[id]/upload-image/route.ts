@@ -69,10 +69,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Update user with profile image URL (stored temporarily in personalSite field)
     // This is a simplified implementation - in production, add a proper profileImageUrl field
-    const updatedUser = await userRepository.update(id, {
-      // We'll need to add a profileImageUrl field to the schema
-      // For now, return a message indicating this needs database schema update
-    });
+    // const updatedUser = await userRepository.update(id, {
+    //   // We'll need to add a profileImageUrl field to the schema
+    //   // For now, return a message indicating this needs database schema update
+    // });
 
     return NextResponse.json(
       { 
