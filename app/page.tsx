@@ -12,7 +12,7 @@ export default function Home() {
               <em>Washington University Computer Science Head TA Directory</em>
             </p>
             <p className="text-lg leading-relaxed max-w-2xl mx-auto">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+              A resource, a history, a lineage.
             </p>
           </div>
 
