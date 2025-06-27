@@ -55,7 +55,7 @@ export async function MissingTAsBySemesterServer({ isAuthenticated, isAdmin }: M
                     </div>
                     <div className="ml-4 flex flex-col space-y-1">
                       <Link
-                        href={`/courses/${offering.course?.courseNumber.replace(/\s+/g, '-')}`}
+                        href={`/courses/${offering.course?.courseNumber}`}
                         className="font-serif text-sm text-charcoal hover:opacity-70 transition-opacity duration-200"
                       >
                         View →

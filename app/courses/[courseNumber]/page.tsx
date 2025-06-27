@@ -16,7 +16,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
-  const course = await courseRepository.findByCourseNumber(resolvedParams.courseNumber);
+  const course = await courseRepository.findByCourseNumber(decodeURIComponent(resolvedParams.courseNumber));
   
   if (!course) {
     return {
@@ -117,7 +117,7 @@ function AllTAsSkeleton() {
 
 // Server component for course header
 async function CourseHeader({ courseNumber }: { courseNumber: string }) {
-  const course = await courseRepository.findByCourseNumber(courseNumber);
+  const course = await courseRepository.findByCourseNumber(decodeURIComponent(courseNumber));
 
   if (!course) {
     notFound();
@@ -176,7 +176,7 @@ async function CourseHeader({ courseNumber }: { courseNumber: string }) {
 
 // Server component for course stats
 async function CourseStats({ courseNumber }: { courseNumber: string }) {
-  const course = await courseRepository.findByCourseNumber(courseNumber);
+  const course = await courseRepository.findByCourseNumber(decodeURIComponent(courseNumber));
   if (!course) return null;
 
   const offerings = await courseOfferingRepository.findWithRelationsByCourseId(course.id);
@@ -235,7 +235,7 @@ async function CourseContent({ courseNumber }: { courseNumber: string }) {
   const { UnclaimedTAMarker } = await import("@/components/ta/UnclaimedTAMarker");
   const { isSemesterCurrent, isSemesterFuture, parseSemester } = await import("@/lib/semester-utils");
   
-  const course = await courseRepository.findByCourseNumber(courseNumber);
+  const course = await courseRepository.findByCourseNumber(decodeURIComponent(courseNumber));
   if (!course) return null;
 
   const offerings = await courseOfferingRepository.findWithRelationsByCourseId(course.id);
@@ -466,12 +466,12 @@ export default async function CourseDetailPage({ params }: PageProps) {
     <CleanLayout maxWidth="7xl">
       {/* Course Header with Suspense */}
       <Suspense fallback={<CourseHeaderSkeleton />}>
-        <CourseHeader courseNumber={resolvedParams.courseNumber} />
+        <CourseHeader courseNumber={decodeURIComponent(resolvedParams.courseNumber)} />
       </Suspense>
 
       {/* Course Stats with Suspense */}
       <Suspense fallback={<CourseStatsSkeleton />}>
-        <CourseStats courseNumber={resolvedParams.courseNumber} />
+        <CourseStats courseNumber={decodeURIComponent(resolvedParams.courseNumber)} />
       </Suspense>
 
       {/* Course Content with Suspense */}
@@ -482,7 +482,7 @@ export default async function CourseDetailPage({ params }: PageProps) {
           <AllTAsSkeleton />
         </>
       }>
-        <CourseContent courseNumber={resolvedParams.courseNumber} />
+        <CourseContent courseNumber={decodeURIComponent(resolvedParams.courseNumber)} />
       </Suspense>
     </CleanLayout>
   );

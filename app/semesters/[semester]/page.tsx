@@ -84,7 +84,7 @@ function isActiveSemester(season: string, year: number): boolean {
 
 export default async function SemesterDetailPage({ params }: PageProps) {
   const resolvedParams = await params;
-  const semesterData = await getSemesterData(resolvedParams.semester);
+  const semesterData = await getSemesterData(decodeURIComponent(resolvedParams.semester));
 
   if (!semesterData) {
     notFound();

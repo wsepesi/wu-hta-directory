@@ -4,11 +4,6 @@
   "installCommand": "pnpm install",
   "framework": "nextjs",
   "regions": ["iad1"],
-  "env": {
-    "NEXTAUTH_URL": "@nextauth-url",
-    "DATABASE_URL": "@database-url",
-    "POSTGRES_PRISMA_URL": "@postgres-prisma-url"
-  },
   "build": {
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1"
