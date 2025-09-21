@@ -12,7 +12,7 @@ export default function Home() {
               <em>Washington University Computer Science Head TA Directory</em>
             </p>
             <p className="text-lg leading-relaxed max-w-2xl mx-auto">
-              A resource, a history, a lineage.
+              {/* TEXT TEXT TEXT */}
             </p>
           </div>
 

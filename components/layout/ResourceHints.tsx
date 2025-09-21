@@ -10,12 +10,11 @@ export function ResourceHints() {
       {/* DNS prefetch for API calls and analytics */}
       {appUrl && <link rel="dns-prefetch" href={appUrl} />}
       
-      {/* Prefetch critical routes - these are the most commonly accessed */}
+      {/* Selective prefetching for most commonly accessed routes */}
       <link rel="prefetch" href="/directory" as="document" />
       <link rel="prefetch" href="/courses" as="document" />
       <link rel="prefetch" href="/people" as="document" />
       <link rel="prefetch" href="/semesters" as="document" />
-      <link rel="prefetch" href="/professors" as="document" />
       
       {/* Preload critical fonts */}
       {/* <link 

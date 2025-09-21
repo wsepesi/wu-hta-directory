@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { Suspense } from "react";
 import CleanLayout, { CleanPageHeader } from "@/components/layout/CleanLayout";
 import Link from "next/link";
-import { getPublicDirectory, getDirectoryStats } from "@/lib/public-directory";
+import { getPublicDirectory, getDirectoryStats, getPublicUserCount } from "@/lib/public-directory";
 import DirectoryFilters from "@/components/directory/DirectoryFilters";
 import DirectoryResults from "@/components/directory/DirectoryResults";
 import { DirectoryFiltersSkeleton } from "@/components/directory/DirectoryFiltersSkeleton";
@@ -33,14 +33,14 @@ interface SearchParams {
 
 // Server component for directory statistics
 async function DirectoryStatsSection() {
-  const [stats, directory] = await Promise.all([
+  const [stats, userCount] = await Promise.all([
     getDirectoryStats(),
-    getPublicDirectory({ limit: 1000 }) // Get all users for count
+    getPublicUserCount()
   ]);
   
   return (
     <DirectoryStats
-      totalUsers={directory.length}
+      totalUsers={userCount}
       totalLocations={stats.locations.length}
       totalGradYears={stats.gradYears.length}
     />

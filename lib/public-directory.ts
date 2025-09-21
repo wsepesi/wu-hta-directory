@@ -268,6 +268,35 @@ export async function getPublicProfile(userId: string): Promise<PublicUserProfil
 }
 
 /**
+ * Get total count of public users
+ */
+export async function getPublicUserCount(): Promise<number> {
+  const cacheKey = 'directory:userCount';
+  const cached = cache.get<number>(cacheKey);
+  
+  if (cached !== null) {
+    return cached;
+  }
+  
+  try {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(eq(users.role, 'head_ta'));
+    
+    const count = result[0]?.count || 0;
+    
+    // Cache for 10 minutes
+    cache.set(cacheKey, count, cacheTTL.long);
+    
+    return count;
+  } catch (error) {
+    console.error('Error getting user count:', error);
+    return 0;
+  }
+}
+
+/**
  * Get directory statistics
  */
 export async function getDirectoryStats(): Promise<{
